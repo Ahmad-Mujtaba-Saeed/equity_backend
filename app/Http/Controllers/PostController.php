@@ -15,15 +15,42 @@ class PostController extends Controller
         $this->middleware('auth:sanctum')->except(['index', 'show']);
     }
 
-    public function index()
-    {
-        $posts = Post::with(['user', 'likes', 'comments'])
-            ->withCount(['likes', 'comments'])
-            ->latest()
-            ->paginate(10);
+public function index()
+{
+    $posts = Post::with(['user', 'likes', 'comments.user'])
+        ->withCount(['likes', 'comments'])
+        ->latest()
+        ->paginate(10);
 
-        return response()->json($posts);
-    }
+    // Log the raw posts data
+    \Log::info('Raw posts data:', $posts->toArray());
+
+    $posts->getCollection()->transform(function ($post) {
+        $mediaArray = array_merge(
+            json_decode($post->images, true) ?? [],
+            json_decode($post->videos, true) ?? []
+        );
+        
+        $formattedMedia = [];
+        
+        foreach ($mediaArray as $mediaItem) {
+            $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+            $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+            
+            $formattedMedia[] = [
+                'type' => $isVideo ? 'video' : 'image',
+               'url' => url('data/' . ($isVideo ? 'videos' : 'images') . '/' . $mediaItem)
+            ];
+        }
+        
+        $post->media = $formattedMedia;
+
+
+        return $post;
+    });
+
+    return response()->json($posts);
+}
 
     public function store(Request $request)
     {
@@ -118,7 +145,7 @@ class PostController extends Controller
             $message = 'Post liked successfully';
         }
 
-        return response()->json(['message' => $message]);
+        return response()->json(['message' => $message,'likes'=> $post->likes()->get()]);
     }
 
     public function comment(Request $request, Post $post)
@@ -133,7 +160,7 @@ class PostController extends Controller
             'content' => $request->content,
             'parent_id' => $request->parent_id
         ]);
-
+        
         return response()->json([
             'message' => 'Comment added successfully',
             'comment' => $comment->load('user')

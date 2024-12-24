@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,4 +35,12 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
     Route::post('/posts/{post}/like', [PostController::class, 'like']);
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
+});
+
+// User Profile Routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', [UserController::class, 'show']);
+    Route::post('/user/update', [UserController::class, 'update']);
+    Route::post('/user/password', [UserController::class, 'updatePassword']);
+    Route::post('/user/notifications', [UserController::class, 'updateNotifications']);
 });
