@@ -32,10 +32,9 @@ class UserController extends Controller
             'state' => 'nullable|string|max:255',
             'address' => 'nullable|string',
             'phone' => 'nullable|string|max:255',
-            'website_url' => 'nullable|url|max:255',
+            'website_url' => 'nullable|max:255',
             'email_notification' => 'nullable|boolean',
             'sms_notification' => 'nullable|boolean',
-            'profile_image' => 'nullable|image|max:2048'
         ]);
 
         if ($validator->fails()) {
@@ -102,5 +101,50 @@ class UserController extends Controller
             'message' => 'Notification preferences updated successfully',
             'user' => $user
         ]);
+    }
+
+    public function getProfile(Request $request)
+    {
+        $user = $request->user();
+        return response()->json([
+            'user' => $user,
+            'about' => [
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'city' => $user->city,
+                'state' => $user->state,
+                'country' => $user->country,
+                'date_of_birth' => $user->date_of_birth,
+                'gender' => $user->gender,
+                'marital_status' => $user->marital_status,
+                'website_url' => $user->website_url,
+            ]
+        ]);
+    }
+
+    public function getUserPosts(Request $request)
+    {
+        $user = $request->user();
+        $posts = $user->posts()->with(['user', 'comments.user', 'likes'])->latest()->get();
+        return response()->json(['posts' => $posts]);
+    }
+
+    public function getUserComments(Request $request)
+    {
+        $user = $request->user();
+        $comments = $user->comments()->with(['post', 'user'])->latest()->get();
+        return response()->json(['comments' => $comments]);
+    }
+
+    public function getUserStats(Request $request)
+    {
+        $user = $request->user();
+        $stats = [
+            'posts_count' => $user->posts()->count(),
+            'comments_count' => $user->comments()->count(),
+            'likes_count' => $user->likes()->count(),
+        ];
+        return response()->json($stats);
     }
 }
