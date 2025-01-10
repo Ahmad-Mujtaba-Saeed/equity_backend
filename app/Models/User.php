@@ -36,6 +36,7 @@ class User extends Authenticatable
         'website_url',
         'email_notification',
         'sms_notification',
+        'google_id',
         'profile_image'
     ];
 

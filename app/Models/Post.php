@@ -12,12 +12,14 @@ class Post extends Model
         'description',
         'images',
         'videos',
+        'documents',
         'views_count'
     ];
 
     protected $casts = [
         'images' => 'array',
         'videos' => 'array',
+        'documents' => 'array',
     ];
 
     public function user()

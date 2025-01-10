@@ -17,14 +17,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/login',[AuthController::class,'login'])->name('login');
-Route::post('/register',[AuthController::class,'register'])->name('register');
+// Authentication Routes
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+// Google Authentication Routes
+Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);
+Route::post('auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
 // Public post routes
 Route::get('/posts', [PostController::class, 'index']);
+Route::get('/user_posts', [PostController::class, 'UserPosts']);
 Route::get('/posts/{post}', [PostController::class, 'show']);
 
-Route::group(['middleware' => 'auth:sanctum'], function () {
+// Protected Routes
+Route::middleware('auth:sanctum')->group(function () {
+    // User Profile
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -35,10 +43,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
     Route::post('/posts/{post}/like', [PostController::class, 'like']);
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
-});
 
-// User Profile Routes
-Route::middleware('auth:sanctum')->group(function () {
+    // User Profile Routes
     Route::get('/user', [UserController::class, 'show']);
     Route::post('/user/update', [UserController::class, 'update']);
     Route::post('/user/password', [UserController::class, 'updatePassword']);

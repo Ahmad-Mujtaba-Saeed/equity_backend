@@ -15,57 +15,101 @@ class PostController extends Controller
         $this->middleware('auth:sanctum')->except(['index', 'show']);
     }
 
-public function index()
-{
-    $posts = Post::with(['user', 'likes', 'comments.user'])
-        ->withCount(['likes', 'comments'])
-        ->latest()
-        ->paginate(10);
 
-    // Log the raw posts data
-    \Log::info('Raw posts data:', $posts->toArray());
+    public function UserPosts()
+    {
+        $posts = Post::with(['user', 'likes', 'comments.user'])
+            ->withCount(['likes', 'comments'])
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->paginate(10);
 
-    $posts->getCollection()->transform(function ($post) {
-        $mediaArray = array_merge(
-            json_decode($post->images, true) ?? [],
-            json_decode($post->videos, true) ?? []
-        );
-        
-        $formattedMedia = [];
-        
-        foreach ($mediaArray as $mediaItem) {
-            $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
-            $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+        // Log the raw posts data
+        \Log::info('Raw posts data:', $posts->toArray());
+
+        $posts->getCollection()->transform(function ($post) {
+            $mediaArray = array_merge(
+                json_decode($post->images, true) ?? [],
+                json_decode($post->videos, true) ?? [],
+                json_decode($post->documents, true) ?? []
+            );
             
-            $formattedMedia[] = [
-                'type' => $isVideo ? 'video' : 'image',
-               'url' => url('data/' . ($isVideo ? 'videos' : 'images') . '/' . $mediaItem)
-            ];
-        }
-        
-        $post->media = $formattedMedia;
+            $formattedMedia = [];
+            
+            foreach ($mediaArray as $mediaItem) {
+                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                
+                $formattedMedia[] = [
+                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                ];
+            }
+            
+            $post->media = $formattedMedia;
 
 
-        return $post;
-    });
+            return $post;
+        });
 
-    return response()->json($posts);
-}
+        return response()->json($posts);
+    }
+    public function index()
+    {
+        $posts = Post::with(['user', 'likes', 'comments.user'])
+            ->withCount(['likes', 'comments'])
+            ->latest()
+            ->paginate(10);
+
+        // Log the raw posts data
+        \Log::info('Raw posts data:', $posts->toArray());
+
+        $posts->getCollection()->transform(function ($post) {
+            $mediaArray = array_merge(
+                json_decode($post->images, true) ?? [],
+                json_decode($post->videos, true) ?? [],
+                json_decode($post->documents, true) ?? []
+            );
+            
+            $formattedMedia = [];
+            
+            foreach ($mediaArray as $mediaItem) {
+                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                
+                $formattedMedia[] = [
+                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                ];
+            }
+            
+            $post->media = $formattedMedia;
+
+
+            return $post;
+        });
+
+        return response()->json($posts);
+    }
 
     public function store(Request $request)
     {
         $request->validate([
             'title' => 'required|string',
             'description' => 'required|string',
-            'image' => 'array',
-            'image.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'video' => 'array',
-            'video.*' => 'mimes:mp4,mov,ogg|max:10240',
+            'images' => 'array|nullable',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'videos' => 'array|nullable',
+            'videos.*' => 'mimes:mp4,mov,ogg|max:10240',
+            'documents' => 'array|nullable',
+            'documents.*' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:5120',
         ]);
 
         $images = [];
-        if ($request->hasFile('image')) {
-            foreach ($request->file('image') as $image) {
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
                 $imageName = time() . '_' . $image->getClientOriginalName();
                 $image->move(public_path('data/images'), $imageName);
                 $images[] = $imageName;
@@ -73,26 +117,44 @@ public function index()
         }
 
         $videos = [];
-        if ($request->hasFile('video')) {
-            foreach ($request->file('video') as $video) {
+        if ($request->hasFile('videos')) {
+            foreach ($request->file('videos') as $video) {
                 $videoName = time() . '_' . $video->getClientOriginalName();
                 $video->move(public_path('data/videos'), $videoName);
                 $videos[] = $videoName;
             }
         }
 
-        $post = Post::create([
-            'user_id' => Auth::id(),
-            'title' => $request->title,
-            'description' => $request->description,
-            'images' => json_encode($images),
-            'videos' => json_encode($videos),
-        ]);
+        $documents = [];
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $document) {
+                $documentName = time() . '_' . $document->getClientOriginalName();
+                $document->move(public_path('data/documents'), $documentName);
+                $documents[] = $documentName;
+            }
+        }
 
-        return response()->json([
-            'message' => 'Post created successfully',
-            'post' => $post
-        ], 201);
+        try {
+            $post = Post::create([
+                'user_id' => Auth::id(),
+                'title' => $request->title,
+                'description' => $request->description,
+                'images' => json_encode($images),
+                'videos' => json_encode($videos),
+                'documents' => json_encode($documents),
+            ]);
+
+            return response()->json([
+                'message' => 'Post created successfully',
+                'post' => $post
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Post creation error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error creating post',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show(Post $post)
@@ -128,9 +190,39 @@ public function index()
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Delete images
+        if ($post->images) {
+            foreach (json_decode($post->images, true) as $image) {
+                $imagePath = public_path('data/images/' . $image);
+                if (file_exists($imagePath)) {
+                    unlink($imagePath);
+                }
+            }
+        }
+
+        // Delete videos
+        if ($post->videos) {
+            foreach (json_decode($post->videos, true) as $video) {
+                $videoPath = public_path('data/videos/' . $video);
+                if (file_exists($videoPath)) {
+                    unlink($videoPath);
+                }
+            }
+        }
+
+        // Delete documents
+        if ($post->documents) {
+            foreach (json_decode($post->documents, true) as $document) {
+                $documentPath = public_path('data/documents/' . $document);
+                if (file_exists($documentPath)) {
+                    unlink($documentPath);
+                }
+            }
+        }
+
         $post->delete();
 
-        return response()->json(['message' => 'Post deleted successfully']);
+        return response()->json(['message' => 'Post and associated media deleted successfully']);
     }
 
     public function like(Post $post)
