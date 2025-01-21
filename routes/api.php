@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\JobController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -29,6 +30,15 @@ Route::post('auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/user_posts', [PostController::class, 'UserPosts']);
 Route::get('/posts/{post}', [PostController::class, 'show']);
+
+// Job routes
+Route::get('/jobs', [JobController::class, 'index']);
+Route::get('/jobs/{id}', [JobController::class, 'show']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/jobs', [JobController::class, 'store']);
+    Route::put('/jobs/{id}', [JobController::class, 'update']);
+    Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
+});
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {

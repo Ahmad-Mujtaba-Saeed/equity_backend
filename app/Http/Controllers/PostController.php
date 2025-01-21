@@ -55,12 +55,33 @@ class PostController extends Controller
 
         return response()->json($posts);
     }
-    public function index()
+    public function index(Request $request)
     {
+        $page = $request->input('page', 1);
+        $perPage = 6; // Set posts per page to 6
+
         $posts = Post::with(['user', 'likes', 'comments.user'])
             ->withCount(['likes', 'comments'])
             ->latest()
-            ->paginate(10);
+            ->paginate($perPage);
+
+        // Get bearer token from request header
+        $token = $request->bearerToken();
+        
+        if ($token) {
+            try {
+                // Attempt to get user from token
+                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                if ($user && $user->tokenable) {
+                    $userId = $user->tokenable->id;
+                    foreach($posts as $post) {
+                        $post->liked = $post->likes->contains('user_id', $userId);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error checking auth token: ' . $e->getMessage());
+            }
+        }
 
         // Log the raw posts data
         \Log::info('Raw posts data:', $posts->toArray());
@@ -86,12 +107,15 @@ class PostController extends Controller
             }
             
             $post->media = $formattedMedia;
-
-
             return $post;
         });
 
-        return response()->json($posts);
+        return response()->json([
+            'data' => $posts->items(),
+            'current_page' => $posts->currentPage(),
+            'last_page' => $posts->lastPage(),
+            'has_more' => $posts->hasMorePages()
+        ]);
     }
 
     public function store(Request $request)
@@ -142,7 +166,7 @@ class PostController extends Controller
                 'images' => json_encode($images),
                 'videos' => json_encode($videos),
                 'documents' => json_encode($documents),
-            ]);
+            ])->with('user');
 
             return response()->json([
                 'message' => 'Post created successfully',
@@ -228,16 +252,27 @@ class PostController extends Controller
     public function like(Post $post)
     {
         $like = $post->likes()->where('user_id', Auth::id())->first();
+        $isLiked = false;
 
         if ($like) {
             $like->delete();
             $message = 'Post unliked successfully';
+            $isLiked = false;
         } else {
             $post->likes()->create(['user_id' => Auth::id()]);
             $message = 'Post liked successfully';
+            $isLiked = true;
         }
 
-        return response()->json(['message' => $message,'likes'=> $post->likes()->get()]);
+        $likes = $post->likes()->with('user')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'liked' => $isLiked,
+            'likes' => $likes,
+            'likes_count' => $likes->count()
+        ]);
     }
 
     public function comment(Request $request, Post $post)
