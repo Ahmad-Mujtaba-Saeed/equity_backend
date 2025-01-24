@@ -121,8 +121,8 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required|string',
-            'description' => 'required|string',
+            'content' => 'required|string',
+            'category_id' => 'required|exists:categories,id',
             'images' => 'array|nullable',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'videos' => 'array|nullable',
@@ -161,16 +161,17 @@ class PostController extends Controller
         try {
             $post = Post::create([
                 'user_id' => Auth::id(),
-                'title' => $request->title,
-                'description' => $request->description,
+                'category_id' => $request->category_id,
+                'title' => $request->content,
+                'description' => $request->content,
                 'images' => json_encode($images),
                 'videos' => json_encode($videos),
                 'documents' => json_encode($documents),
-            ])->with('user');
+            ]);
 
             return response()->json([
                 'message' => 'Post created successfully',
-                'post' => $post
+                'post' => $post->load(['user', 'category'])
             ], 201);
         } catch (\Exception $e) {
             \Log::error('Post creation error: ' . $e->getMessage());

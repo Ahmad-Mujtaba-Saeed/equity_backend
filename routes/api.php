@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\EducationContentController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
@@ -40,7 +42,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
 });
 
-// Protected Routes
+// Education Content Routes
+Route::get('/education-contents', [EducationContentController::class, 'index']);
+Route::get('/education-contents/{id}', [EducationContentController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
     Route::get('/user', function (Request $request) {
@@ -63,4 +68,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user-stats', [UserController::class, 'getUserStats']);
     Route::get('/user-posts', [UserController::class, 'getUserPosts']);
     Route::get('/user-comments', [UserController::class, 'getUserComments']);
+
+    // Education Content Management Routes
+    Route::post('/education-contents', [EducationContentController::class, 'store']);
+    Route::put('/education-contents/{id}', [EducationContentController::class, 'update']);
+    Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
+
+    // Category routes
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 });
