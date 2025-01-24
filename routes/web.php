@@ -18,10 +18,17 @@ Route::get('/', function () {
 });
 
 Route::get('/storage-link', function () {
-    try {
-        Artisan::call('storage:link');
-        return response()->json(['message' => 'Storage link created successfully.'], 200);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
+    Route::get('/storage-link', function () {
+        if (app()->environment('production')) {
+            abort(403, 'Unauthorized action.');
+        }
+    
+        try {
+            Artisan::call('storage:link');
+            return response()->json(['message' => 'Storage link created successfully.'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    });
+    
 });

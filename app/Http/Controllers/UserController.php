@@ -43,11 +43,11 @@ class UserController extends Controller
 
         // Handle profile image upload
         if ($request->hasFile('profile_image')) {
-            $path = $request->file('profile_image')->store('profiles', 'public');
+            $path = $request->file('profile_image')->store('images/profiles', 'public');
             if ($user->profile_image) {
                 Storage::disk('public')->delete($user->profile_image);
             }
-            $user->profile_image = $path;
+            $user->profile_image = 'images/profiles/' . basename($path);
         }
 
         // Update user fields

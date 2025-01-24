@@ -210,7 +210,7 @@ class PostController extends Controller
 
     public function destroy(Post $post)
     {
-        if ($post->user_id !== Auth::id()) {
+        if ($post->user_id !== Auth::id() && Auth::user()->roles !== "admin") {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

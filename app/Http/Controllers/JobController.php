@@ -38,7 +38,7 @@ class JobController extends Controller
             // Handle image upload
             $imagePath = null;
             if ($request->hasFile('main_image')) {
-                $imagePath = $request->file('main_image')->store('jobs', 'public');
+                $imagePath = $request->file('main_image')->store('images/jobs', 'public');
             }
 
             $job = Job::create([
@@ -56,8 +56,8 @@ class JobController extends Controller
 
         } catch (\Exception $e) {
             // Delete uploaded image if job creation fails
-            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
-                Storage::disk('public')->delete($imagePath);
+            if ($imagePath && Storage::disk('public')->exists("images/jobs/$imagePath")) {
+                Storage::disk('public')->delete("images/jobs/$imagePath");
             }
 
             return response()->json([
@@ -101,11 +101,11 @@ class JobController extends Controller
             // Handle image upload
             if ($request->hasFile('main_image')) {
                 // Delete old image
-                if ($job->main_image && Storage::disk('public')->exists($job->main_image)) {
-                    Storage::disk('public')->delete($job->main_image);
+                if ($job->main_image && Storage::disk('public')->exists('images/jobs/' . $job->main_image)) {
+                    Storage::disk('public')->delete('images/jobs/' . $job->main_image);
                 }
                 
-                $data['main_image'] = $request->file('main_image')->store('jobs', 'public');
+                $data['main_image'] = $request->file('main_image')->store('images/jobs', 'public');
             }
 
             $job->update($data);
@@ -133,8 +133,8 @@ class JobController extends Controller
 
         try {
             // Delete job image
-            if ($job->main_image && Storage::disk('public')->exists($job->main_image)) {
-                Storage::disk('public')->delete($job->main_image);
+            if ($job->main_image && Storage::disk('public')->exists('images/jobs/' . $job->main_image)) {
+                Storage::disk('public')->delete('images/jobs/' . $job->main_image);
             }
 
             $job->delete();
