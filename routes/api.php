@@ -73,8 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/education-contents', [EducationContentController::class, 'store']);
     Route::put('/education-contents/{id}', [EducationContentController::class, 'update']);
     Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
-
     // Category routes
+    Route::post('/award-video-points', [EducationContentController::class, 'videoPoints']);
+    
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::put('/categories/{category}', [CategoryController::class, 'update']);

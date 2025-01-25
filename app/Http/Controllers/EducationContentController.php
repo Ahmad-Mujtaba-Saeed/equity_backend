@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\EducationContent;
+use App\Models\VideoCompletion;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EducationContentController extends Controller
 {
@@ -17,6 +20,49 @@ class EducationContentController extends Controller
     public function show($id)
     {
         return EducationContent::with('user:id,name')->findOrFail($id);
+    }
+
+    public function videoPoints(Request $request){
+        $request->validate([
+            'content_id' => 'required',
+            'user_id' => 'required',
+        ]);
+
+        $content = EducationContent::findOrFail($request->content_id);
+        
+        // Check if video has already been completed by this user
+        $existing = VideoCompletion::where('user_id', $request->user_id)
+            ->where('content_id', $request->content_id)
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'Video already completed'], 200);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create video completion record
+            VideoCompletion::create([
+                'user_id' => $request->user_id,
+                'content_id' => $request->content_id
+            ]);
+
+            // Update user's award points
+            $user = User::findOrFail($request->user_id);
+            $user->increment('award_points');
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Points awarded successfully',
+                'award_points' => $user->award_points
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to award points'], 500);
+        }
     }
 
     public function store(Request $request)

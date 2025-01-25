@@ -60,10 +60,19 @@ class PostController extends Controller
         $page = $request->input('page', 1);
         $perPage = 6; // Set posts per page to 6
 
-        $posts = Post::with(['user', 'likes', 'comments.user'])
-            ->withCount(['likes', 'comments'])
-            ->latest()
-            ->paginate($perPage);
+
+        if($request->has('category')){
+            $posts = Post::with(['user', 'likes', 'comments.user'])
+                ->withCount(['likes', 'comments'])
+                ->where('category_id', $request->category)
+                ->latest()
+                ->paginate($perPage);
+        }else{
+            $posts = Post::with(['user', 'likes', 'comments.user'])
+                ->withCount(['likes', 'comments'])
+                ->latest()
+                ->paginate($perPage);
+        }
 
         // Get bearer token from request header
         $token = $request->bearerToken();
