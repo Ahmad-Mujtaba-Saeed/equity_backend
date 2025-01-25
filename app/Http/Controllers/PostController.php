@@ -133,7 +133,7 @@ class PostController extends Controller
             'content' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'images' => 'array|nullable',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:4086',
             'videos' => 'array|nullable',
             'videos.*' => 'mimes:mp4,mov,ogg|max:10240',
             'documents' => 'array|nullable',
