@@ -12,7 +12,11 @@ class UserController extends Controller
 {
     public function show(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        $userData = $user->toArray();
+        $userData['has_password'] = !empty($user->password);
+        
+        return response()->json($userData);
     }
 
     public function update(Request $request)
@@ -43,11 +47,24 @@ class UserController extends Controller
 
         // Handle profile image upload
         if ($request->hasFile('profile_image')) {
-            $path = $request->file('profile_image')->store('images/profiles', 'public');
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
+            $uploadPath = public_path('images/profiles');
+            
+            // Create directory if it doesn't exist
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
             }
-            $user->profile_image = 'images/profiles/' . basename($path);
+
+            $image = $request->file('profile_image');
+            $fileName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            
+            // Delete old image if exists
+            if ($user->profile_image && file_exists(public_path($user->profile_image))) {
+                unlink(public_path($user->profile_image));
+            }
+
+            // Move the file to public directory
+            $image->move($uploadPath, $fileName);
+            $user->profile_image = 'profiles/' . $fileName;
         }
 
         // Update user fields
@@ -62,19 +79,25 @@ class UserController extends Controller
 
     public function updatePassword(Request $request)
     {
+        $user = $request->user();
+
+        // Check if user has a password set
+        if ($user->password) {
+            if (!$request->current_password) {
+                return response()->json(['error' => 'Current password is required'], 422);
+            }
+
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json(['error' => 'Current password is incorrect'], 422);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
-            'current_password' => 'required',
             'new_password' => 'required|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $user = $request->user();
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['error' => 'Current password is incorrect'], 422);
         }
 
         $user->password = Hash::make($request->new_password);
