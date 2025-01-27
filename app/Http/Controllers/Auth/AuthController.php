@@ -96,10 +96,14 @@ class AuthController extends Controller
                 [
                     'name' => $payload['name'],
                     'google_id' => $payload['sub'],
-                    'profile_image' => $payload['picture'] ?? null,
                     'email_verified_at' => now(),
                 ]
             );
+
+            if (!$user->profile_image) {
+                $user->profile_image = $payload['picture'];
+                $user->save();
+            }
 
             // Create token for the user
             $token = $user->createToken('google-token')->plainTextToken;
