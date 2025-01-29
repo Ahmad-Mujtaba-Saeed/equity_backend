@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FollowsHandler;
 use App\Models\Post;
 use App\Models\Like;
 use App\Models\Comment;
@@ -15,15 +16,56 @@ class PostController extends Controller
         $this->middleware('auth:sanctum')->except(['index', 'show']);
     }
 
-
     public function UserPosts()
     {
-        $posts = Post::with(['user', 'likes', 'comments.user'])
+
+            $posts = Post::with(['user', 'likes', 'comments.user'])
+                ->withCount(['likes', 'comments'])
+                ->where('user_id', Auth::id())
+                ->latest()
+                ->paginate(10);
+
+
+        // Log the raw posts data
+        \Log::info('Raw posts data:', $posts->toArray());
+
+        $posts->getCollection()->transform(function ($post) {
+            $mediaArray = array_merge(
+                json_decode($post->images, true) ?? [],
+                json_decode($post->videos, true) ?? [],
+                json_decode($post->documents, true) ?? []
+            );
+            
+            $formattedMedia = [];
+            
+            foreach ($mediaArray as $mediaItem) {
+                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                
+                $formattedMedia[] = [
+                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                ];
+            }
+            
+            $post->media = $formattedMedia;
+
+
+            return $post;
+        });
+
+        return response()->json($posts);
+    }
+    public function UserPostsforotherusers($id)
+    {
+        if($id){
+            $posts = Post::with(['user', 'likes', 'comments.user'])
             ->withCount(['likes', 'comments'])
-            ->where('user_id', Auth::id())
+            ->where('user_id', $id)
             ->latest()
             ->paginate(10);
-
+        }
         // Log the raw posts data
         \Log::info('Raw posts data:', $posts->toArray());
 
@@ -85,7 +127,18 @@ class PostController extends Controller
                     $userId = $user->tokenable->id;
                     foreach($posts as $post) {
                         $post->liked = $post->likes->contains('user_id', $userId);
+                        $follow = FollowsHandler::where('follower_id',$userId)->where('following_id',$post->user->id)->first();
+                        if($follow){
+                            $post->is_following = true;
+                        }else{
+                            $post->is_following = false;
+                        }
                     }
+
+                    // // Sort posts to show is_following=true posts first
+                    // $posts = $posts->sortByDesc(function($post) {
+                    //     return [$post->is_following, $post->created_at];
+                    // })->values();
                 }
             } catch (\Exception $e) {
                 \Log::error('Error checking auth token: ' . $e->getMessage());

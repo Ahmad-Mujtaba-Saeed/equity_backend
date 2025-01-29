@@ -126,6 +126,42 @@ class UserController extends Controller
         ]);
     }
 
+    public function getProfileforotheruser($id,Request $request)
+    {
+        $user = User::find($id);
+        return response()->json([
+            'user' => $user,
+            'about' => [
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'city' => $user->city,
+                'state' => $user->state,
+                'country' => $user->country,
+                'date_of_birth' => $user->date_of_birth,
+                'gender' => $user->gender,
+                'marital_status' => $user->marital_status,
+                'website_url' => $user->website_url,
+            ]
+        ]);
+    }
+    public function getUserStatsforotheruser($id,Request $request)
+    {
+        $user = User::find($id);
+        $stats = [
+            'posts_count' => $user->posts()->count(),
+            'comments_count' => $user->comments()->count(),
+            'likes_count' => $user->likes()->count(),
+        ];
+        return response()->json($stats);
+    }
+    public function getUserPostsforotheruser($id,Request $request)
+    {
+        $user = User::find($id);
+        $posts = $user->posts()->with(['user', 'comments.user', 'likes'])->latest()->get();
+        return response()->json(['posts' => $posts]);
+    }
+
     public function getProfile(Request $request)
     {
         $user = $request->user();
@@ -169,5 +205,49 @@ class UserController extends Controller
             'likes_count' => $user->likes()->count(),
         ];
         return response()->json($stats);
+    }
+
+    // Get users list with basic info
+    public function getUsers(Request $request)
+    {
+        $search = $request->query('search', '');
+        $currentUserId = auth()->id();
+
+        $query = User::select('id', 'name', 'username', 'profile_image')
+            ->where('id', '!=', $currentUserId); // Exclude current user
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('name')
+                      ->limit(50)
+                      ->get();
+
+        return response()->json([
+            'users' => $users
+        ]);
+    }
+
+    /**
+     * Search for users based on query
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function search(Request $request)
+    {
+        $query = $request->get('query');
+        
+        $users = User::where('name', 'like', "%{$query}%")
+            ->orWhere('email', 'like', "%{$query}%")
+            ->select('id', 'name', 'email', 'profile_image')
+            ->limit(5)
+            ->get();
+
+        return response()->json($users);
     }
 }

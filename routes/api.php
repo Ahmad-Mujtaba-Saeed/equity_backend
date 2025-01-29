@@ -3,7 +3,10 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\EducationContentController;
+use App\Http\Controllers\FollowsHandlerController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -31,8 +34,10 @@ Route::post('auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 // Public post routes
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/user_posts', [PostController::class, 'UserPosts']);
+Route::get('/user_posts/{id}', [PostController::class, 'UserPostsforotherusers']);
 Route::get('/posts/{post}', [PostController::class, 'show']);
 
+Route::get('/users/list', [UserController::class, 'getUsers']);
 // Job routes
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
@@ -46,11 +51,18 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/education-contents', [EducationContentController::class, 'index']);
 Route::get('/education-contents/{id}', [EducationContentController::class, 'show']);
 
+Route::get('/user-profile/{id}', [UserController::class, 'getProfileforotheruser']);
+Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser']);
+
+
+
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+
+    Route::get('/users', [UserController::class, 'getUsers']);
 
     // Protected post routes
     Route::post('/posts', [PostController::class, 'store']);
@@ -80,4 +92,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::put('/categories/{category}', [CategoryController::class, 'update']);
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+    Route::post('/follow/{following_id}', [FollowsHandlerController::class, 'toggleFollow']);
+
+    // Message routes
+    Route::get('/messages/conversations', [MessageController::class, 'getConversationsList']);
+    Route::get('/messages/unread-count', [MessageController::class, 'getUnreadCount']);
+    Route::get('/notifications', [NotificationController::class, 'getUnreadNotifications']);
+    Route::get('/messages/{otherUserId}', [MessageController::class, 'getMessages']);
+    Route::post('/messages/send', [MessageController::class, 'sendMessage']);
+    Route::post('/messages/mark-read/{conversationId}', [MessageController::class, 'markRead']);
+
+    // User routes
+    Route::prefix('users')->group(function () {
+        Route::get('/search', [UserController::class, 'search']);
+    });
 });
