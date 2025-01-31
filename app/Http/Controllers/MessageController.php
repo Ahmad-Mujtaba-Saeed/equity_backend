@@ -71,6 +71,8 @@ class MessageController extends Controller
     public function getMessages($otherUserId)
     {
         $userId = Auth::id();
+        $page = request()->get('page', 1);
+        $perPage = 10;
         
         // Get or create conversation
         $conversation = Conversation::where(function($query) use ($userId, $otherUserId) {
@@ -85,11 +87,18 @@ class MessageController extends Controller
             return response()->json(['message' => 'Conversation not found.'], 404);
         }
         
-        // Get messages for the conversation
+        // Get messages for the conversation with pagination
         $messages = Message::where('conversation_id', $conversation->id)
             ->with(['sender:id,name,profile_image'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+            ->orderBy('created_at', 'desc')  // Latest first
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get()
+            ->reverse()  // Reverse to show oldest first
+            ->values();  // Reset array keys to get sequential array
+        
+        // Get total count for pagination
+        $totalMessages = Message::where('conversation_id', $conversation->id)->count();
         
         // Mark messages as read
         Message::where('conversation_id', $conversation->id)
@@ -97,7 +106,11 @@ class MessageController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
         
-        return response()->json(['messages' => $messages]);
+        return response()->json([
+            'messages' => $messages->toArray(),
+            'total' => $totalMessages,
+            'has_more' => $totalMessages > ($page * $perPage)
+        ]);
     }
 
     // Send a new message

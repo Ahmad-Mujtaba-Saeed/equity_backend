@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\Route;
 // Authentication Routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.forgot');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
 
 // Google Authentication Routes
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);

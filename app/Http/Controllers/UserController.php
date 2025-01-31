@@ -22,14 +22,14 @@ class UserController extends Controller
     public function update(Request $request)
     {
         $user = $request->user();
-        
+            
         $validator = Validator::make($request->all(), [
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'username' => 'nullable|string|max:255|unique:users,username,'.$user->id,
             'city' => 'nullable|string|max:255',
-            'gender' => 'nullable|in:male,female,other',
-            'date_of_birth' => 'nullable|date',
+            'gender' => 'nullable',
+            'date_of_birth' => 'nullable',
             'marital_status' => 'nullable|string|max:255',
             'age_group' => 'nullable|string|max:255',
             'country' => 'nullable|string|max:255',
@@ -67,8 +67,30 @@ class UserController extends Controller
             $user->profile_image = 'profiles/' . $fileName;
         }
 
+        // Handle background image upload
+        if ($request->hasFile('background_image')) {
+            $uploadPath = public_path('images/backgroundprofilepic');
+            
+            // Create directory if it doesn't exist
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $image = $request->file('background_image');
+            $fileName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            
+            // Delete old background image if exists and it's not the default
+            if ($user->background_image && $user->background_image !== 'background-img.jpg' && file_exists(public_path('images/backgroundprofilepic/' . $user->background_image))) {
+                unlink(public_path('images/backgroundprofilepic/' . $user->background_image));
+            }
+
+            // Move the file to public directory
+            $image->move($uploadPath, $fileName);
+            $user->background_image = $fileName;
+        }
+
         // Update user fields
-        $user->fill($request->except('profile_image'));
+        $user->fill($request->except(['profile_image', 'background_image']));
         $user->save();
 
         return response()->json([
