@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\JobApplication; // Add this line
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -14,11 +15,35 @@ class JobController extends Controller
         $this->middleware('auth:sanctum')->except(['index', 'show']);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $jobs = Job::where('is_active', true)
                    ->latest()
                    ->paginate(9);
+        // Get bearer token from request header
+        $token = $request->bearerToken();
+                   if ($token) {
+                    try {
+                        // Attempt to get user from token
+                        $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                        if ($user && $user->tokenable) {
+                            $userId = $user->tokenable->id;
+                            foreach($jobs as $job) {
+                                // Fetch applications for the current job by user ID
+                                $job->application = JobApplication::where('job_id', $job->id)
+                                    ->where('user_id', $userId)
+                                    ->first();
+                            }
+        
+                            // // Sort posts to show is_following=true posts first
+                            // $posts = $posts->sortByDesc(function($post) {
+                            //     return [$post->is_following, $post->created_at];
+                            // })->values();
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Error checking auth token: ' . $e->getMessage());
+                    }
+                }
 
         return response()->json([
             'jobs' => $jobs

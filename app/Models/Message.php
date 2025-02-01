@@ -15,7 +15,12 @@ class Message extends Model
         'conversation_id',
         'sender_id',
         'content',
-        'is_read'
+        'is_read',
+        'type',
+        'file_name',
+        'file_path',
+        'file_size',
+        'mime_type'
     ];
 
     protected $casts = [
@@ -23,6 +28,8 @@ class Message extends Model
     ];
 
     protected $with = ['sender'];
+
+    protected $appends = ['file_url'];
 
     // Relationship with conversation
     public function conversation()
@@ -34,5 +41,14 @@ class Message extends Model
     public function sender()
     {
         return $this->belongsTo(User::class, 'sender_id');
+    }
+
+    // Get the full URL for file attachments
+    public function getFileUrlAttribute()
+    {
+        if ($this->file_path) {
+            return url($this->file_path);
+        }
+        return null;
     }
 }

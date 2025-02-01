@@ -9,6 +9,8 @@ use App\Models\Conversation;
 use Illuminate\Support\Facades\Auth;
 use App\Events\NewMessage;
 use App\Events\NewNotification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class MessageController extends Controller
 {
@@ -116,10 +118,16 @@ class MessageController extends Controller
     // Send a new message
     public function sendMessage(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'recipient_id' => 'required|exists:users,id',
-            'message' => 'required|string'
+            'message' => 'required_without:file|string|nullable',
+            'file' => 'required_without:message|file|max:50000|nullable', // 50MB max
+            'type' => 'nullable|in:text,image,video,file'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         $userId = auth()->id();
         
@@ -135,23 +143,56 @@ class MessageController extends Controller
         if (!$conversation) {
             $conversation = Conversation::create([
                 'user_id' => $userId,
-                'recipient_id' => $request->recipient_id
+                'recipient_id' => $request->recipient_id,
+                'last_message_time' => now()
             ]);
         }
 
-        // Create message
-        $message = Message::create([
+        $messageData = [
             'conversation_id' => $conversation->id,
             'sender_id' => $userId,
-            'content' => $request->message,
-        ]);
+            'type' => $request->type ?? 'text',
+            'is_read' => false
+        ];
 
-        // Update conversation last message
+        // Handle file upload if present
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            
+            // Get file details before moving
+            $originalName = $file->getClientOriginalName();
+            $fileSize = $file->getSize();
+            $mimeType = $file->getMimeType();
+            
+            // Create directory if it doesn't exist
+            $uploadPath = public_path('data/chat_files');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+            
+            // Move file to public directory
+            $file->move($uploadPath, $fileName);
+            $filePath = 'data/chat_files/' . $fileName;
+            
+            $messageData['file_name'] = $originalName;
+            $messageData['file_path'] = $filePath;
+            $messageData['file_size'] = $fileSize;
+            $messageData['mime_type'] = $mimeType;
+            $messageData['content'] = $originalName; // Use filename as content
+        } else {
+            $messageData['content'] = $request->message;
+        }
+
+        $message = Message::create($messageData);
+
+        // Update conversation's last message
         $conversation->update([
-            'last_message' => $request->message,
+            'last_message' => $message->content,
             'last_message_time' => now()
         ]);
-        
+
+        // Load the sender relationship
         $message->load('sender');
 
         // Broadcast new message event
@@ -173,6 +214,29 @@ class MessageController extends Controller
         broadcast(new NewNotification($notification))->toOthers();
 
         return response()->json($message);
+    }
+
+    // Download a file
+    public function download($id)
+    {
+        $message = Message::findOrFail($id);
+        
+        // Check if user is part of the conversation
+        $conversation = $message->conversation;
+        if ($conversation->user_id !== Auth::id() && $conversation->recipient_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $filePath = public_path($message->file_path);
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        return response()->download(
+            $filePath,
+            $message->file_name,
+            ['Content-Type' => $message->mime_type]
+        );
     }
 
     // Get unread messages count

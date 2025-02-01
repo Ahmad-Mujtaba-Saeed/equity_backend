@@ -3,7 +3,10 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\EducationContentController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\EqNotificationController;
 use App\Http\Controllers\FollowsHandlerController;
+use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -96,6 +99,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
     Route::post('/follow/{following_id}', [FollowsHandlerController::class, 'toggleFollow']);
 
+    // Notification routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/notifications', [EqNotificationController::class, 'index']);
+        Route::post('/notifications', [EqNotificationController::class, 'store']);
+        Route::patch('/notifications/{id}/read', [EqNotificationController::class, 'markAsRead']);
+        Route::patch('/notifications/read-all', [EqNotificationController::class, 'markAllAsRead']);
+        Route::get('/notifications/unread-count', [EqNotificationController::class, 'getUnreadCount']);
+        Route::delete('/notifications/{id}', [EqNotificationController::class, 'destroy']);
+        Route::delete('/notifications', [EqNotificationController::class, 'destroyAll']);
+    });
+
+    // Job Applications
+    Route::post('/job-applications', [JobApplicationController::class, 'store']);
+    Route::get('/job-applications', [JobApplicationController::class, 'index']);
+    Route::put('/job-applications/{id}', [JobApplicationController::class, 'update'])->middleware('admin');
+
+    // Event routes
+    Route::get('/events', [EventController::class, 'index']);
+    Route::get('/events/{id}', [EventController::class, 'show']);
+    
+    // Admin only routes
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/events', [EventController::class, 'store']);
+        Route::put('/events/{id}', [EventController::class, 'update']);
+        Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    });
+
     // Message routes
     Route::get('/messages/conversations', [MessageController::class, 'getConversationsList']);
     Route::get('/messages/unread-count', [MessageController::class, 'getUnreadCount']);
@@ -103,6 +133,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{otherUserId}', [MessageController::class, 'getMessages']);
     Route::post('/messages/send', [MessageController::class, 'sendMessage']);
     Route::post('/messages/mark-read/{conversationId}', [MessageController::class, 'markRead']);
+    
+    // New file handling routes
+    Route::get('/messages/download/{id}', [MessageController::class, 'download']);
 
     // User routes
     Route::prefix('users')->group(function () {

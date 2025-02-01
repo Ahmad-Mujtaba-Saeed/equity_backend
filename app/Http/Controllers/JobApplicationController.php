@@ -1,0 +1,95 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\JobApplication;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+
+class JobApplicationController extends Controller
+{
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'job_id' => 'required|exists:jobs,id',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'country' => 'required|string|max:2',
+            'company' => 'required|string|max:255',
+            'job_title' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Check if user has already applied for this job
+        $existingApplication = JobApplication::where('user_id', Auth::id())
+            ->where('job_id', $request->job_id)
+            ->first();
+
+        if ($existingApplication) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already applied for this job'
+            ], 422);
+        }
+
+        try {
+            // Create job application with user_id
+            $application = JobApplication::create(array_merge($request->all(), [
+                'user_id' => Auth::id(),
+                'status' => 'pending'
+            ]));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Job application submitted successfully',
+                'data' => $application
+            ], 201);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle unique constraint violation
+            if ($e->getCode() === '23505') { // PostgreSQL unique violation code
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already applied for this job'
+                ], 422);
+            }
+            throw $e;
+        }
+    }
+
+    public function index()
+    {
+        $applications = JobApplication::with(['job', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'applications' => $applications
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $application = JobApplication::findOrFail($id);
+        
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:review,accepted,rejected'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $application->update($request->only('status'));
+
+        return response()->json([
+            'message' => 'Application status updated successfully',
+            'data' => $application
+        ]);
+    }
+}
