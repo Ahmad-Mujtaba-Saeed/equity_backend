@@ -41,6 +41,7 @@ class CreateJobNotifications implements ShouldQueue
             $notifications = $chunk->map(function ($user) {
                 return [
                     'user_id' => $user->id,
+                    'by_user' => $this->jobModel->user_id,
                     'foreign_id' => $this->jobModel->id,
                     'notif_type' => 'job',
                     'content' => 'New Job Opportunity Posted',

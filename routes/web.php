@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Artisan;
 Route::get('/', function () {
     return view('welcome');
 });
+Route::get('/restart-queue', function () {
+    \Illuminate\Support\Facades\Artisan::call('queue:restart');
+    return "Queue restarted!";
+});
 
 Route::get('/storage-link', function () {
     Route::get('/storage-link', function () {

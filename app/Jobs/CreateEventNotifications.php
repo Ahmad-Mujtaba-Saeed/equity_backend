@@ -41,6 +41,7 @@ class CreateEventNotifications implements ShouldQueue
             $notifications = $chunk->map(function ($user) {
                 return [
                     'user_id' => $user->id,
+                    'by_user' => $this->eventModel->created_by,
                     'foreign_id' => $this->eventModel->id,
                     'notif_type' => 'event',
                     'content' => 'New Event Added: ' . $this->eventModel->title,

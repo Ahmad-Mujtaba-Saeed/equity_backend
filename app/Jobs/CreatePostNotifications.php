@@ -41,6 +41,7 @@ class CreatePostNotifications implements ShouldQueue
             $notifications = $chunk->map(function ($user) {
                 return [
                     'user_id' => $user->id,
+                    'by_user' => $this->post->user_id,
                     'foreign_id' => $this->post->id,
                     'notif_type' => 'post',
                     'content' => 'New Post Created',

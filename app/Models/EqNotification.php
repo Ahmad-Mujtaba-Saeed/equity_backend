@@ -11,6 +11,7 @@ class EqNotification extends Model
 
     protected $fillable = [
         'user_id',
+        'by_user',
         'foreign_id',
         'notif_type',
         'content',
@@ -28,8 +29,16 @@ class EqNotification extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'by_user');
     }
+
+    /**
+     * Get the user that created the notification
+     */
+    // public function byUser(): BelongsTo
+    // {
+    //     return $this->belongsTo(User::class, 'by_user');
+    // }
 
     /**
      * Get the related model based on notification type

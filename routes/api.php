@@ -101,10 +101,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notification routes
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/notifications', [EqNotificationController::class, 'index']);
+        Route::get('/get-notifications', [EqNotificationController::class, 'index']);
         Route::post('/notifications', [EqNotificationController::class, 'store']);
         Route::patch('/notifications/{id}/read', [EqNotificationController::class, 'markAsRead']);
-        Route::patch('/notifications/read-all', [EqNotificationController::class, 'markAllAsRead']);
+        Route::post('/notifications/mark-all-as-read', [EqNotificationController::class, 'markAllAsRead']);
         Route::get('/notifications/unread-count', [EqNotificationController::class, 'getUnreadCount']);
         Route::delete('/notifications/{id}', [EqNotificationController::class, 'destroy']);
         Route::delete('/notifications', [EqNotificationController::class, 'destroyAll']);

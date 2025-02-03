@@ -387,7 +387,8 @@ class PostController extends Controller
             if ($post->user_id !== Auth::id()) {
                 EqNotification::create([
                     'user_id' => $post->user_id,
-                    'foreign_id' => $like->id,
+                    'by_user' => Auth::id(),
+                    'foreign_id' => $post->id,
                     'notif_type' => 'like',
                     'content' => Auth::user()->name . ' liked your post'
                 ]);
@@ -436,7 +437,8 @@ class PostController extends Controller
         if ($post->user_id !== Auth::id()) {
             EqNotification::create([
                 'user_id' => $post->user_id,
-                'foreign_id' => $comment->id,
+                'by_user' => Auth::id(),
+                'foreign_id' => $post->id,
                 'notif_type' => 'comment',
                 'content' => Auth::user()->name . ' commented on your post'
             ]);
@@ -459,7 +461,8 @@ class PostController extends Controller
             if ($parentComment && $parentComment->user_id !== Auth::id()) {
                 EqNotification::create([
                     'user_id' => $parentComment->user_id,
-                    'foreign_id' => $comment->id,
+                    'by_user' => Auth::id(),
+                    'foreign_id' => $post->id,
                     'notif_type' => 'reply',
                     'content' => Auth::user()->name . ' replied to your comment'
                 ]);

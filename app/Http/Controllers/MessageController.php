@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use Illuminate\Support\Facades\Auth;
 use App\Events\NewMessage;
 use App\Events\NewNotification;
+use App\Models\EqNotification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -194,6 +195,14 @@ class MessageController extends Controller
 
         // Load the sender relationship
         $message->load('sender');
+
+        EqNotification::create([
+            'user_id' => $request->recipient_id,
+            'by_user' => Auth::id(),
+            'foreign_id' => $conversation->id,
+            'notif_type' => 'message',
+            'content' => Auth::user()->name . ' sent you a message'
+        ]);
 
         // Broadcast new message event
         broadcast(new NewMessage($message))->toOthers();

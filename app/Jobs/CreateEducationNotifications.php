@@ -41,6 +41,7 @@ class CreateEducationNotifications implements ShouldQueue
             $notifications = $chunk->map(function ($user) {
                 return [
                     'user_id' => $user->id,
+                    'by_user' => $this->educationModel->user_id,
                     'foreign_id' => $this->educationModel->id,
                     'notif_type' => 'education',
                     'content' => 'New Educational Content: ' . $this->educationModel->title,

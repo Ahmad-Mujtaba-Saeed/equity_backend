@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\FollowsHandler;
 use Illuminate\Support\Facades\Auth;
+use App\Models\EqNotification;
 
 class FollowsHandlerController extends Controller
 {
@@ -32,6 +33,14 @@ class FollowsHandlerController extends Controller
             FollowsHandler::create([
                 'follower_id' => $follower_id,
                 'following_id' => $following_id
+            ]);
+
+            EqNotification::create([
+                'user_id' => $following_id,
+                'by_user' => Auth::id(),
+                'foreign_id' => $follower_id,
+                'notif_type' => 'follow',
+                'content' => Auth::user()->name . ' followed you'
             ]);
 
             return response()->json([
