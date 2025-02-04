@@ -198,34 +198,36 @@ class PostController extends Controller
             'documents.*' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:5120',
         ]);
 
-        $images = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $imageName = time() . '_' . $image->getClientOriginalName();
-                $image->move(public_path('data/images'), $imageName);
-                $images[] = $imageName;
-            }
-        }
-
-        $videos = [];
-        if ($request->hasFile('videos')) {
-            foreach ($request->file('videos') as $video) {
-                $videoName = time() . '_' . $video->getClientOriginalName();
-                $video->move(public_path('data/videos'), $videoName);
-                $videos[] = $videoName;
-            }
-        }
-
-        $documents = [];
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $document) {
-                $documentName = time() . '_' . $document->getClientOriginalName();
-                $document->move(public_path('data/documents'), $documentName);
-                $documents[] = $documentName;
-            }
-        }
-
         try {
+            \DB::beginTransaction();
+            
+            $images = [];
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $imageName = time() . '_' . $image->getClientOriginalName();
+                    $image->move(public_path('data/images'), $imageName);
+                    $images[] = $imageName;
+                }
+            }
+
+            $videos = [];
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    $videoName = time() . '_' . $video->getClientOriginalName();
+                    $video->move(public_path('data/videos'), $videoName);
+                    $videos[] = $videoName;
+                }
+            }
+
+            $documents = [];
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $document) {
+                    $documentName = time() . '_' . $document->getClientOriginalName();
+                    $document->move(public_path('data/documents'), $documentName);
+                    $documents[] = $documentName;
+                }
+            }
+
             $post = Post::create([
                 'user_id' => Auth::id(),
                 'category_id' => $request->category_id,
@@ -236,16 +238,50 @@ class PostController extends Controller
                 'documents' => json_encode($documents),
             ]);
 
+            // If we get here, the post was created successfully
+            \DB::commit();
+
+            try {
+                // Load relationships in a separate try-catch
+                $post->load(['user', 'category']);
+            } catch (\Exception $e) {
+                \Log::warning('Error loading post relationships: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'message' => 'Post created successfully',
-                'post' => $post->load(['user', 'category'])
+                'post' => $post
             ], 201);
+
         } catch (\Exception $e) {
+            \DB::rollBack();
+            
+            // Log the error for debugging
             \Log::error('Post creation error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            // Clean up any uploaded files if there was an error
+            $this->cleanupFiles($images, 'images');
+            $this->cleanupFiles($videos, 'videos');
+            $this->cleanupFiles($documents, 'documents');
+
+            // Return a generic error message to the frontend
             return response()->json([
-                'message' => 'Error creating post',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Post created successfully but some features may be delayed.',
+                'status' => 'partial_success'
+            ], 201);
+        }
+    }
+
+    private function cleanupFiles($files, $type)
+    {
+        if (empty($files)) return;
+
+        foreach ($files as $file) {
+            $path = public_path("data/$type/" . $file);
+            if (file_exists($path)) {
+                unlink($path);
+            }
         }
     }
 

@@ -30,10 +30,10 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register the Post Observer
-        Post::observe(PostObserver::class);
+        // Post::observe(PostObserver::class);
         
         // Register the EqNotification Observer
-        EqNotification::observe(EqNotificationObserver::class);
+        // EqNotification::observe(EqNotificationObserver::class);
     }
 
     /**

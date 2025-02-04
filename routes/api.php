@@ -46,7 +46,7 @@ Route::get('/users/list', [UserController::class, 'getUsers']);
 // Job routes
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum','admin')->group(function () {
     Route::post('/jobs', [JobController::class, 'store']);
     Route::put('/jobs/{id}', [JobController::class, 'update']);
     Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
@@ -70,9 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users', [UserController::class, 'getUsers']);
 
     // Protected post routes
-    Route::post('/posts', [PostController::class, 'store']);
-    Route::put('/posts/{post}', [PostController::class, 'update']);
-    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+    Route::post('/posts', [PostController::class, 'store'])->middleware('admin');
+    Route::put('/posts/{post}', [PostController::class, 'update'])->middleware('admin');
+    Route::delete('/posts/{post}', [PostController::class, 'destroy'])->middleware('admin');
     Route::post('/posts/{post}/like', [PostController::class, 'like']);
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
 
@@ -87,9 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user-comments', [UserController::class, 'getUserComments']);
 
     // Education Content Management Routes
-    Route::post('/education-contents', [EducationContentController::class, 'store']);
-    Route::put('/education-contents/{id}', [EducationContentController::class, 'update']);
-    Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
+    Route::post('/education-contents', [EducationContentController::class, 'store'])->middleware('admin');
+    Route::put('/education-contents/{id}', [EducationContentController::class, 'update'])->middleware('admin');
+    Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy'])->middleware('admin');
     // Category routes
     Route::post('/award-video-points', [EducationContentController::class, 'videoPoints']);
     

@@ -15,7 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Process notifications every 2 minutes
+        $schedule->command('notifications:process')->everyTwoMinutes();
     }
 
     /**
