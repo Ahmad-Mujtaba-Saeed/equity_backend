@@ -53,8 +53,9 @@ class NotificationProcessor
                             'user_id' => $user->id,
                             'by_user' => $post->user_id,
                             'foreign_id' => $post->id,
-                            'notif_type' => 'post',
+                            'notif_type' => 'post_comment',
                             'content' => 'New Post Created',
+                            'is_read' => false,
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
@@ -96,8 +97,9 @@ class NotificationProcessor
                             'user_id' => $user->id,
                             'by_user' => $event->created_by,
                             'foreign_id' => $event->id,
-                            'notif_type' => 'event',
+                            'notif_type' => 'event_created',
                             'content' => 'New Event Added: ' . $event->title,
+                            'is_read' => false,
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
@@ -142,8 +144,9 @@ class NotificationProcessor
                             'user_id' => $user->id,
                             'by_user' => $job->user_id,
                             'foreign_id' => $job->id,
-                            'notif_type' => 'job',
+                            'notif_type' => 'job_posted',
                             'content' => 'New Job Opportunity Posted',
+                            'is_read' => false,
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
@@ -186,8 +189,9 @@ class NotificationProcessor
                             'user_id' => $user->id,
                             'by_user' => $education->user_id,
                             'foreign_id' => $education->id,
-                            'notif_type' => 'education',
+                            'notif_type' => 'education_content',
                             'content' => 'New Educational Content: ' . $education->title,
+                            'is_read' => false,
                             'created_at' => now(),
                             'updated_at' => now()
                         ];
