@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('events', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->text('description')->nullable();
-            $table->string('subtitle')->nullable();
+            $table->longText('title');
+            $table->longText('description')->nullable();
+            $table->longText('subtitle')->nullable();
             $table->date('event_date');
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
