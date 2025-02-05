@@ -33,7 +33,7 @@ class EventServiceProvider extends ServiceProvider
         // Post::observe(PostObserver::class);
         
         // Register the EqNotification Observer
-        EqNotification::observe(EqNotificationObserver::class);
+        // EqNotification::observe(EqNotificationObserver::class);
     }
 
     /**

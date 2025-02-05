@@ -16,6 +16,8 @@ use App\Mail\EducationNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Events\NewNotification;
+use Illuminate\Support\Facades\Broadcast;
 
 // Bootstrap Laravel
 $app = require_once __DIR__.'/bootstrap/app.php';
@@ -24,6 +26,54 @@ $kernel->bootstrap();
 
 class NotificationProcessor
 {
+    private function broadcastNotification($notification)
+    {
+        // Load the user data for the notification sender
+        $sender = User::find($notification->by_user);
+        
+        // Prepare notification data
+        $notificationData = [
+            'id' => $notification->id,
+            'foreign_id' => $notification->foreign_id,
+            'recipient_id' => $notification->user_id,
+            'type' => $notification->notif_type,
+            'is_read' => $notification->is_read,
+            'sender' => [
+                'id' => $notification->by_user,
+                'name' => $sender->name,
+                'profile_image' => $sender->profile_image
+            ],
+            'message' => $notification->content,
+            'created_at' => $notification->created_at
+        ];
+
+        // Broadcast the notification event
+        Broadcast::event(new NewNotification($notificationData));
+    }
+
+    private function createAndBroadcastNotifications($notifications)
+    {
+        // Insert notifications in chunks
+        $createdNotifications = [];
+        foreach (array_chunk($notifications, 100) as $chunk) {
+            $ids = EqNotification::insert($chunk);
+            // Get the created notifications
+            $created = EqNotification::where('created_at', '>=', now()->subSeconds(5))
+                                   ->whereIn('user_id', array_column($chunk, 'user_id'))
+                                   ->whereIn('by_user', array_column($chunk, 'by_user'))
+                                   ->whereIn('foreign_id', array_column($chunk, 'foreign_id'))
+                                   ->get();
+            $createdNotifications = array_merge($createdNotifications, $created->all());
+        }
+
+        // Broadcast each notification
+        foreach ($createdNotifications as $notification) {
+            $this->broadcastNotification($notification);
+        }
+
+        return $createdNotifications;
+    }
+
     public function process()
     {
         try {
@@ -61,7 +111,8 @@ class NotificationProcessor
                         ];
                     })->toArray();
 
-                    EqNotification::insert($notifications);
+                    // Create and broadcast notifications
+                    $this->createAndBroadcastNotifications($notifications);
 
                     foreach ($chunk as $user) {
                         $emailData = [
@@ -105,7 +156,8 @@ class NotificationProcessor
                         ];
                     })->toArray();
 
-                    EqNotification::insert($notifications);
+                    // Create and broadcast notifications
+                    $this->createAndBroadcastNotifications($notifications);
 
                     foreach ($chunk as $user) {
                         $emailData = [
@@ -152,7 +204,8 @@ class NotificationProcessor
                         ];
                     })->toArray();
 
-                    EqNotification::insert($notifications);
+                    // Create and broadcast notifications
+                    $this->createAndBroadcastNotifications($notifications);
 
                     foreach ($chunk as $user) {
                         $emailData = [
@@ -197,7 +250,8 @@ class NotificationProcessor
                         ];
                     })->toArray();
 
-                    EqNotification::insert($notifications);
+                    // Create and broadcast notifications
+                    $this->createAndBroadcastNotifications($notifications);
 
                     foreach ($chunk as $user) {
                         $emailData = [

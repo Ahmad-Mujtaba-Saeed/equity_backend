@@ -17,7 +17,7 @@ class PostNotification extends Mailable
     public function __construct($data)
     {
         $this->data = $data;
-        $this->frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+        $this->frontendUrl = config('app.frontend_url', 'https://equitycircle.techtrack.online');
         // Use absolute URL for logo with public_path
         $this->logoUrl = asset('logo/Equity_Circle_full.png');
     }
