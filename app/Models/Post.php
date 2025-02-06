@@ -24,6 +24,11 @@ class Post extends Model
         'images' => 'array',
         'videos' => 'array',
         'documents' => 'array',
+        'category_id' => 'integer',
+        'user_id' => 'integer',
+        'views_count' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     protected $with = ['user'];

@@ -12,6 +12,7 @@ use App\Mail\PostNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
@@ -241,12 +242,50 @@ class PostController extends Controller
             // If we get here, the post was created successfully
             \DB::commit();
 
-            try {
-                // Load relationships in a separate try-catch
-                $post->load(['user', 'category']);
-            } catch (\Exception $e) {
-                \Log::warning('Error loading post relationships: ' . $e->getMessage());
+            // Load relationships and counts like in show method
+            $post->load(['user', 'likes', 'comments.user', 'comments.replies.user']);
+            $post->loadCount(['likes', 'comments']);
+
+            // Check if user has liked the post
+            $token = $request->bearerToken();
+            if ($token) {
+                try {
+                    $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                    if ($user && $user->tokenable) {
+                        $userId = $user->tokenable->id;
+                        $post->liked = $post->likes->contains('user_id', $userId);
+                        
+                        // Check if user is following the post creator
+                        $follow = FollowsHandler::where('follower_id', $userId)
+                            ->where('following_id', $post->user->id)
+                            ->first();
+                        $post->is_following = $follow ? true : false;
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Error checking auth token: ' . $e->getMessage());
+                }
             }
+
+            // Format media files
+            $mediaArray = array_merge(
+                json_decode($post->images, true) ?? [],
+                json_decode($post->videos, true) ?? [],
+                json_decode($post->documents, true) ?? []
+            );
+            
+            $formattedMedia = [];
+            foreach ($mediaArray as $mediaItem) {
+                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                
+                $formattedMedia[] = [
+                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                ];
+            }
+            
+            $post->media = $formattedMedia;
 
             return response()->json([
                 'message' => 'Post created successfully',
@@ -265,11 +304,10 @@ class PostController extends Controller
             $this->cleanupFiles($videos, 'videos');
             $this->cleanupFiles($documents, 'documents');
 
-            // Return a generic error message to the frontend
             return response()->json([
-                'message' => 'Post created successfully but some features may be delayed.',
-                'status' => 'partial_success'
-            ], 201);
+                'message' => 'An error occurred while creating the post.',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -339,21 +377,144 @@ class PostController extends Controller
 
     public function update(Request $request, Post $post)
     {
-        if ($post->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $request->validate([
             'title' => 'required|string',
-            'description' => 'required|string',
+            'category_id' => 'required|exists:categories,id',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4086',
+            'videos.*' => 'nullable|mimes:mp4,mov,ogg|max:10240',
+            'documents.*' => 'nullable|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:5120',
+            'remove_media' => 'nullable|array',
+            'remove_media.*' => 'string',
+            'kept_images' => 'nullable|string',
+            'kept_videos' => 'nullable|string',
+            'kept_documents' => 'nullable|string'
         ]);
 
-        $post->update($request->only(['title', 'description']));
+        try {
+            \DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Post updated successfully',
-            'post' => $post
-        ]);
+            // Initialize arrays with kept media
+            $images = json_decode($request->kept_images ?? '[]');
+            $videos = json_decode($request->kept_videos ?? '[]');
+            $documents = json_decode($request->kept_documents ?? '[]');
+
+            // Handle media removal if specified
+            if ($request->has('remove_media')) {
+                foreach ($request->remove_media as $mediaPath) {
+                    $fullPath = public_path('data/images/' . $mediaPath);
+                    if (file_exists($fullPath)) {
+                        unlink($fullPath);
+                    }
+                    $fullPath = public_path('data/videos/' . $mediaPath);
+                    if (file_exists($fullPath)) {
+                        unlink($fullPath);
+                    }
+                    $fullPath = public_path('data/documents/' . $mediaPath);
+                    if (file_exists($fullPath)) {
+                        unlink($fullPath);
+                    }
+                }
+            }
+
+            // Handle new media uploads
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $imageName = time() . '_' . $image->getClientOriginalName();
+                    $image->move(public_path('data/images'), $imageName);
+                    $images[] = $imageName;
+                }
+            }
+
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    $videoName = time() . '_' . $video->getClientOriginalName();
+                    $video->move(public_path('data/videos'), $videoName);
+                    $videos[] = $videoName;
+                }
+            }
+
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $document) {
+                    $documentName = time() . '_' . $document->getClientOriginalName();
+                    $document->move(public_path('data/documents'), $documentName);
+                    $documents[] = $documentName;
+                }
+            }
+
+            // Update post with new data
+            $post->update([
+                'title' => $request->title,
+                'description' => $request->title,
+                'category_id' => $request->category_id,
+                'images' => json_encode($images),
+                'videos' => json_encode($videos),
+                'documents' => json_encode($documents),
+            ]);
+
+            \DB::commit();
+
+            // Load relationships and counts like in show method
+            $post->load(['user', 'likes', 'comments.user', 'comments.replies.user']);
+            $post->loadCount(['likes', 'comments']);
+
+            // Check if user has liked the post
+            $token = $request->bearerToken();
+            if ($token) {
+                try {
+                    $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                    if ($user && $user->tokenable) {
+                        $userId = $user->tokenable->id;
+                        $post->liked = $post->likes->contains('user_id', $userId);
+                        
+                        // Check if user is following the post creator
+                        $follow = FollowsHandler::where('follower_id', $userId)
+                            ->where('following_id', $post->user->id)
+                            ->first();
+                        $post->is_following = $follow ? true : false;
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Error checking auth token: ' . $e->getMessage());
+                }
+            }
+
+            // Format media files
+            $mediaArray = array_merge(
+                json_decode($post->images, true) ?? [],
+                json_decode($post->videos, true) ?? [],
+                json_decode($post->documents, true) ?? []
+            );
+            
+            $formattedMedia = [];
+            foreach ($mediaArray as $mediaItem) {
+                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                
+                $formattedMedia[] = [
+                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                ];
+            }
+            
+            $post->media = $formattedMedia;
+
+            return response()->json([
+                'message' => 'Post updated successfully',
+                'post' => $post
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            
+            // Log the error for debugging
+            \Log::error('Post update error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return response()->json([
+                'message' => 'An error occurred while updating the post.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroy(Post $post)
