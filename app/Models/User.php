@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\UserPermission;
 
 class User extends Authenticatable
 {
@@ -81,5 +82,13 @@ class User extends Authenticatable
     public function likes()
     {
         return $this->hasMany(Like::class);
+    }
+
+    /**
+     * Get the permissions for the user.
+     */
+    public function permissions()
+    {
+        return $this->hasMany(UserPermission::class);
     }
 }

@@ -44,6 +44,10 @@ class EventController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+        
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_events') !== 1) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
         $eventData = $validator->validated();
         $eventData['created_by'] = Auth::id();

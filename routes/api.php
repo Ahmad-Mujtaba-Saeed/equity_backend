@@ -46,7 +46,7 @@ Route::get('/users/list', [UserController::class, 'getUsers']);
 // Job routes
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
-Route::middleware('auth:sanctum','admin')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/jobs', [JobController::class, 'store']);
     Route::put('/jobs/{id}', [JobController::class, 'update']);
     Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
@@ -63,22 +63,24 @@ Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser
 
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+Route::get('/user', function (Request $request) {
+    return $request->user()->load('permissions');
+});
 
     Route::get('/users', [UserController::class, 'getUsers']);
+    Route::get('/users/{id}', [UserController::class, 'GetUser']);
 
     // Protected post routes
-    Route::post('/posts', [PostController::class, 'store'])->middleware('admin');
-    Route::put('/posts/{post}', [PostController::class, 'update'])->middleware('admin');
-    Route::delete('/posts/{post}', [PostController::class, 'destroy'])->middleware('admin');
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::put('/posts/{post}', [PostController::class, 'update']);
+    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
     Route::post('/posts/{post}/like', [PostController::class, 'like']);
     Route::post('/posts/{post}/comment', [PostController::class, 'comment']);
 
     // User Profile Routes
     Route::get('/user', [UserController::class, 'show']);
     Route::post('/user/update', [UserController::class, 'update']);
+    Route::put('/users/{id}/permissions', [UserController::class, 'UpdatePermissions']);
     Route::post('/user/password', [UserController::class, 'updatePassword']);
     Route::post('/user/notifications', [UserController::class, 'updateNotifications']);
     Route::get('/user-profile', [UserController::class, 'getProfile']);
@@ -87,9 +89,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user-comments', [UserController::class, 'getUserComments']);
 
     // Education Content Management Routes
-    Route::post('/education-contents', [EducationContentController::class, 'store'])->middleware('admin');
-    Route::put('/education-contents/{id}', [EducationContentController::class, 'update'])->middleware('admin');
-    Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy'])->middleware('admin');
+    Route::post('/education-contents', [EducationContentController::class, 'store']);
+    Route::put('/education-contents/{id}', [EducationContentController::class, 'update']);
+    Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
     // Category routes
     Route::post('/award-video-points', [EducationContentController::class, 'videoPoints']);
     
@@ -113,14 +115,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Job Applications
     Route::post('/job-applications', [JobApplicationController::class, 'store']);
     Route::get('/job-applications', [JobApplicationController::class, 'index']);
-    Route::put('/job-applications/{id}', [JobApplicationController::class, 'update'])->middleware('admin');
+    Route::put('/job-applications/{id}', [JobApplicationController::class, 'update']);
 
     // Event routes
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{id}', [EventController::class, 'show']);
     
     // Admin only routes
-    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/events', [EventController::class, 'store']);
         Route::put('/events/{id}', [EventController::class, 'update']);
         Route::delete('/events/{id}', [EventController::class, 'destroy']);

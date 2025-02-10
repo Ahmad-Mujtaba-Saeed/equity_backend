@@ -7,12 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Models\UserPermission;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user();
+        $user = $request->user()->load('permissions');
         $userData = $user->toArray();
         $userData['has_password'] = !empty($user->password);
         
@@ -235,7 +237,7 @@ class UserController extends Controller
         $search = $request->query('search', '');
         $currentUserId = auth()->id();
 
-        $query = User::select('id', 'name', 'username', 'profile_image')
+        $query = User::select('id', 'name', 'email','username', 'profile_image')
             ->where('id', '!=', $currentUserId); // Exclude current user
 
         if ($search) {
@@ -254,6 +256,60 @@ class UserController extends Controller
         ]);
     }
 
+    public function GetUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->load('permissions');
+        return response()->json($user);
+    }
+
+    public function UpdatePermissions(Request $request, $id)
+    {
+        // Validate the incoming request
+        $request->validate([
+            'can_create_jobs' => 'required|boolean',
+            'can_create_events' => 'required|boolean',
+            'can_create_education' => 'required|boolean',
+            'can_create_post_business' => 'required|boolean',
+            'can_create_post_fitness' => 'required|boolean',
+            'can_create_post_crypto' => 'required|boolean',
+            'can_create_post_mindset' => 'required|boolean',
+            'can_manage_users' => 'required|boolean',
+        ]);
+    
+
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_manage_users') !== 1) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Find the user
+        $user = User::findOrFail($id);
+    
+        $request->can_create_post_category = json_encode([
+             $request->can_create_post_business ? 1 :0,
+             $request->can_create_post_fitness ? 2 :0,
+             $request->can_create_post_crypto ? 3 :0,
+             $request->can_create_post_mindset ? 4 :0,
+             $request->can_create_post_mindset ? 5 :0,
+        ]);
+    
+        // Update permissions
+        $permissionsData = [
+            'can_create_jobs' => $request->can_create_jobs,
+            'can_create_events' => $request->can_create_events,
+            'can_create_education' => $request->can_create_education,
+            'can_create_post_category' => $request->can_create_post_category,
+            'can_manage_users' => $request->can_manage_users
+        ];
+    
+        // Use the user_id to update or create the permissions
+        UserPermission::updateOrCreate(
+            ['user_id' => $user->id], // Use user_id as the identifier
+            $permissionsData
+        );
+    
+        return response()->json(['message' => 'Permissions updated successfully.']);
+    }
     /**
      * Search for users based on query
      *
@@ -273,3 +329,4 @@ class UserController extends Controller
         return response()->json($users);
     }
 }
+

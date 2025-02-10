@@ -76,6 +76,10 @@ class JobApplicationController extends Controller
     public function update(Request $request, $id)
     {
         $application = JobApplication::findOrFail($id);
+
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_jobs') !== 1){
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:review,accepted,rejected'

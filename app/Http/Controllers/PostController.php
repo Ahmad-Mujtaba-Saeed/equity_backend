@@ -199,6 +199,11 @@ class PostController extends Controller
             'documents.*' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:5120',
         ]);
 
+        $permissions = json_decode(Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_post_category'), true);
+        if (!in_array($request->category_id, $permissions)) {
+            return response()->json(['message' => 'Permission denied'], 403);
+        }
+
         try {
             \DB::beginTransaction();
             

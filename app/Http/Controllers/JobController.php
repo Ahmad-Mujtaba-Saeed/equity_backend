@@ -59,6 +59,10 @@ class JobController extends Controller
             'main_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_jobs') !== 1) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         try {
             // Handle image upload
             $imagePath = null;
@@ -112,7 +116,7 @@ class JobController extends Controller
     {
         $job = Job::findOrFail($id);
 
-        if (Auth::id() !== $job->user_id) {
+        if (Auth::id() !== $job->user_id && Auth::user()->roles != "admin") {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -158,7 +162,7 @@ class JobController extends Controller
     {
         $job = Job::findOrFail($id);
 
-        if (Auth::id() !== $job->user_id) {
+        if (Auth::id() !== $job->user_id && Auth::user()->roles != "admin") {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

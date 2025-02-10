@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use App\Models\UserPermission;
 
 class AuthController extends Controller
 {
@@ -54,6 +55,13 @@ class AuthController extends Controller
             'email' => $validatedData['email'],
             'password' => bcrypt($validatedData['password']),
         ]);
+
+        $user_permission = UserPermission::updateOrCreate([
+            'user_id' => $user->id,
+        ]);
+
+        $user->permission_id = $user_permission->id;
+        $user->save();
 
         // Generate token for the user
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -104,11 +112,19 @@ class AuthController extends Controller
                     'email_verified_at' => now(),
                 ]
             );
+            $user_permission = UserPermission::updateOrCreate([
+                'user_id' => $user->id,
+            ]);
+            
+            $user->permission_id = $user_permission->id;
+            $user->save();
 
             if (!$user->profile_image) {
                 $user->profile_image = $payload['picture'];
                 $user->save();
             }
+
+
 
             // Create token for the user
             $token = $user->createToken('google-token')->plainTextToken;
