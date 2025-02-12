@@ -68,6 +68,7 @@ Route::get('/user', function (Request $request) {
 });
 
     Route::get('/users', [UserController::class, 'getUsers']);
+    Route::get('/users/search', [UserController::class, 'search']);
     Route::get('/users/{id}', [UserController::class, 'GetUser']);
 
     // Protected post routes
@@ -139,8 +140,4 @@ Route::get('/user', function (Request $request) {
     // New file handling routes
     Route::get('/messages/download/{id}', [MessageController::class, 'download']);
 
-    // User routes
-    Route::prefix('users')->group(function () {
-        Route::get('/search', [UserController::class, 'search']);
-    });
 });

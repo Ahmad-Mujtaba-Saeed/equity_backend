@@ -87,7 +87,11 @@ class MessageController extends Controller
         })->first();
         
         if (!$conversation) {
-            return response()->json(['message' => 'Conversation not found.'], 404);
+            return  response()->json([
+                'messages' => [],
+                'total' => 0,
+                'has_more' => false
+            ]);
         }
         
         // Get messages for the conversation with pagination

@@ -39,5 +39,4 @@ Route::get('/storage-link', function () {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     });
-    
 });

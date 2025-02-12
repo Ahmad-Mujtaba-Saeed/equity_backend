@@ -318,6 +318,7 @@ class UserController extends Controller
      */
     public function search(Request $request)
     {
+        // dd();
         $query = $request->get('query');
         
         $users = User::where('name', 'like', "%{$query}%")
