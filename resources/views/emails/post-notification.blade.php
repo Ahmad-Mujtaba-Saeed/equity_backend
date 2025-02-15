@@ -79,7 +79,7 @@
                 <h2>New Post on Equity Circle!</h2>
                 <p>Hello {{ $data['recipient_name'] }},</p>
                 <p>A new post has been shared on Equity Circle:</p>
-                <p class="highlight">"{{ $data['post_title'] }}"</p>
+                <p class="highlight">{!! ($data['post_title']) !!}</p>
                 
             @elseif($data['type'] === 'like')
                 <h2>Your Post Received a Like!</h2>
