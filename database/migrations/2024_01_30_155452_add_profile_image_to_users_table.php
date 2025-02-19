@@ -6,15 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('profile_image')->default('/user-profile.jpeg')->after('email'); // Adjust the position as needed
+            $table->string('profile_image')->default('profile-img.jpg')->after('email');
         });
     }
 

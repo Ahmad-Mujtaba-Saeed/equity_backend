@@ -1,0 +1,192 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use App\Models\Post;
+use App\Models\User;
+use App\Models\Event;
+use App\Models\Job;
+use App\Models\EducationContent;
+use App\Models\EqNotification;
+use App\Mail\PostNotification;
+use App\Mail\EventNotification;
+use App\Mail\JobNotification;
+use App\Mail\EducationNotification;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+
+class ProcessNotifications extends Command
+{
+    protected $signature = 'notifications:process';
+    protected $description = 'Process notifications and emails for new content';
+
+    public function handle()
+    {
+        $this->processNewPosts();
+        $this->processNewEvents();
+        $this->processNewJobs();
+        $this->processNewEducation();
+        
+        $this->info('All notifications processed successfully.');
+    }
+
+    private function processNewPosts()
+    {
+        // Get posts created in the last 2 minutes
+        $posts = Post::where('created_at', '>=', Carbon::now()->subMinutes(2))->get();
+        
+        foreach ($posts as $post) {
+            // Get all users except the post creator
+            $users = User::where('id', '!=', $post->user_id)->get();
+
+            foreach ($users->chunk(100) as $chunk) {
+                $notifications = $chunk->map(function ($user) use ($post) {
+                    return [
+                        'user_id' => $user->id,
+                        'by_user' => $post->user_id,
+                        'foreign_id' => $post->id,
+                        'notif_type' => 'post',
+                        'content' => 'New Post Created',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                })->toArray();
+
+                EqNotification::insert($notifications);
+
+                foreach ($chunk as $user) {
+                    $emailData = [
+                        'type' => 'new_post',
+                        'recipient_name' => $user->name,
+                        'post_title' => Str::limit($post->content, 50),
+                        'post_id' => $post->id,
+                        'author_name' => $post->user->name
+                    ];
+
+                    Mail::to($user->email)->send(new PostNotification($emailData));
+                }
+            }
+        }
+    }
+
+    private function processNewEvents()
+    {
+        // Get events created in the last 2 minutes
+        $events = Event::where('created_at', '>=', Carbon::now()->subMinutes(2))->get();
+        
+        foreach ($events as $event) {
+            $users = User::where('id', '!=', $event->created_by)->get();
+
+            foreach ($users->chunk(100) as $chunk) {
+                $notifications = $chunk->map(function ($user) use ($event) {
+                    return [
+                        'user_id' => $user->id,
+                        'by_user' => $event->created_by,
+                        'foreign_id' => $event->id,
+                        'notif_type' => 'event',
+                        'content' => 'New Event Added: ' . $event->title,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                })->toArray();
+
+                EqNotification::insert($notifications);
+
+                foreach ($chunk as $user) {
+                    $emailData = [
+                        'type' => 'new_event',
+                        'recipient_name' => $user->name,
+                        'event_title' => $event->title,
+                        'event_subtitle' => $event->subtitle,
+                        'event_date' => $event->event_date->format('F j, Y'),
+                        'event_time' => $event->start_time->format('g:i A'),
+                        'event_id' => $event->id,
+                        'event_description' => Str::limit($event->description, 100)
+                    ];
+
+                    Mail::to($user->email)->send(new EventNotification($emailData));
+                }
+            }
+        }
+    }
+
+    private function processNewJobs()
+    {
+        // Get jobs created in the last 2 minutes
+        $jobs = Job::where('created_at', '>=', Carbon::now()->subMinutes(2))->get();
+        
+        foreach ($jobs as $job) {
+            $users = User::where('id', '!=', $job->user_id)->get();
+
+            foreach ($users->chunk(100) as $chunk) {
+                $notifications = $chunk->map(function ($user) use ($job) {
+                    return [
+                        'user_id' => $user->id,
+                        'by_user' => $job->user_id,
+                        'foreign_id' => $job->id,
+                        'notif_type' => 'job',
+                        'content' => 'New Job Opportunity Posted',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                })->toArray();
+
+                EqNotification::insert($notifications);
+
+                foreach ($chunk as $user) {
+                    $emailData = [
+                        'type' => 'new_job',
+                        'recipient_name' => $user->name,
+                        'job_title' => $job->title,
+                        'job_description' => Str::limit($job->short_description, 100),
+                        'job_id' => $job->id,
+                        'company_name' => $job->user->name
+                    ];
+
+                    Mail::to($user->email)->send(new JobNotification($emailData));
+                }
+            }
+        }
+    }
+
+    private function processNewEducation()
+    {
+        // Get education content created in the last 2 minutes
+        $educationContents = EducationContent::where('created_at', '>=', Carbon::now()->subMinutes(2))->get();
+        
+        foreach ($educationContents as $education) {
+            $users = User::where('id', '!=', $education->user_id)->get();
+
+            foreach ($users->chunk(100) as $chunk) {
+                $notifications = $chunk->map(function ($user) use ($education) {
+                    return [
+                        'user_id' => $user->id,
+                        'by_user' => $education->user_id,
+                        'foreign_id' => $education->id,
+                        'notif_type' => 'education',
+                        'content' => 'New Educational Content: ' . $education->title,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                })->toArray();
+
+                EqNotification::insert($notifications);
+
+                foreach ($chunk as $user) {
+                    $emailData = [
+                        'type' => 'new_education',
+                        'recipient_name' => $user->name,
+                        'education_title' => $education->title,
+                        'education_description' => Str::limit($education->short_description, 100),
+                        'education_id' => $education->id,
+                        'author_name' => $education->user->name
+                    ];
+
+                    Mail::to($user->email)->send(new EducationNotification($emailData));
+                }
+            }
+        }
+    }
+}

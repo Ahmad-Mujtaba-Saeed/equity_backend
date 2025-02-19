@@ -74,8 +74,8 @@ class EducationContentController extends Controller
             'description' => 'required|string',
             'video_url' => 'nullable|url'
         ]);
-        if(Auth::user()->roles !== "admin"){
-            return response()->json(['error' => 'Only admin can upload educational content'], 400);
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
         if ($request->hasFile('image')) {
             $image = $request->file('image');
@@ -104,7 +104,7 @@ class EducationContentController extends Controller
         $educationContent = EducationContent::findOrFail($id);
 
         // Check if the user is the owner of the content
-        if ($educationContent->user_id !== Auth::id()) {
+        if ($educationContent->user_id !== Auth::id() && Auth::user()->roles != "admin") {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -143,7 +143,7 @@ class EducationContentController extends Controller
         $educationContent = EducationContent::findOrFail($id);
         
         // Check if the user is the owner of the content
-        if ($educationContent->user_id !== Auth::id()) {
+        if ($educationContent->user_id !== Auth::id() && Auth::user()->roles != "admin") {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

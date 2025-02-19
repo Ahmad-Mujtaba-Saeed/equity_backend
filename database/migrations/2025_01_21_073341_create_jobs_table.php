@@ -16,8 +16,8 @@ return new class extends Migration
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('title');
-            $table->text('short_description');
+            $table->longText('title');
+            $table->longText('short_description');
             $table->longText('description');
             $table->string('main_image');
             $table->boolean('is_active')->default(true);

@@ -6,6 +6,10 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use App\Models\Post;
+use App\Observers\PostObserver;
+use App\Models\EqNotification;
+use App\Observers\EqNotificationObserver;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -22,12 +26,14 @@ class EventServiceProvider extends ServiceProvider
 
     /**
      * Register any events for your application.
-     *
-     * @return void
      */
-    public function boot()
+    public function boot(): void
     {
-        //
+        // Register the Post Observer
+        // Post::observe(PostObserver::class);
+        
+        // Register the EqNotification Observer
+        // EqNotification::observe(EqNotificationObserver::class);
     }
 
     /**
