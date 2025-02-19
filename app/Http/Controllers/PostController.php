@@ -146,6 +146,14 @@ class PostController extends Controller
                 \Log::error('Error checking auth token: ' . $e->getMessage());
             }
         }
+        else{
+            return response()->json([
+                'data' => [],
+                'current_page' => 0,
+                'last_page' => 0,
+                'has_more' => false
+            ]);
+        }
 
         // Log the raw posts data
         \Log::info('Raw posts data:', $posts->toArray());
