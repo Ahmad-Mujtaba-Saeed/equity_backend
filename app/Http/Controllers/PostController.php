@@ -105,48 +105,51 @@ class PostController extends Controller
     }
     public function index(Request $request)
     {
-        $page = $request->input('page', 1);
         $perPage = 6; // Set posts per page to 6
-
-
-        if($request->has('category')){
-            $posts = Post::with(['user', 'likes', 'comments.user'])
-                ->withCount(['likes', 'comments'])
-                ->where('category_id', $request->category)
-                ->latest()
-                ->paginate($perPage);
-        }else{
-            $posts = Post::with(['user', 'likes', 'comments.user'])
-                ->withCount(['likes', 'comments'])
-                ->latest()
-                ->paginate($perPage);
+    
+        // Base query
+        $query = Post::with(['user', 'likes', 'comments.user'])
+            ->withCount(['likes', 'comments'])
+            ->latest();
+    
+        // Filter by category if provided
+        if ($request->has('category')) {
+            $query->where('category_id', $request->category);
         }
-
+    
         // Get bearer token from request header
         $token = $request->bearerToken();
-        
+        $followedUsers = []; // Initialize an empty list
+    
         if ($token) {
             try {
-                // Attempt to get user from token
                 $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
                 if ($user && $user->tokenable) {
                     $userId = $user->tokenable->id;
-                    foreach($posts as $key => $post) {
-                        $post->liked = $post->likes->contains('user_id', $userId);
-                        $follow = FollowsHandler::where('follower_id',$userId)->where('following_id',$post->user->id)->first();
-                        if($follow){
-                            $post->is_following = true;
-                        } else {
-                            $post->is_following = false;
-                            unset($posts[$key]); // Remove post from collection if not following
-                        }
-                    }
+    
+                    // Get list of followed users
+                    $followedUsers = FollowsHandler::where('follower_id', $userId)
+                        ->pluck('following_id')
+                        ->toArray();
+    
+                    // Apply filtering at the query level
+                    $query->where(function ($q) use ($userId, $followedUsers) {
+                        $q->where(function ($q2) use ($followedUsers) {
+                            // Show public posts only from followed users
+                            $q2->where('visibility', 'public')
+                                ->whereIn('user_id', $followedUsers);
+                        })
+                        ->orWhere(function ($q3) use ($userId) {
+                            // Show private posts only if the user is the owner
+                            $q3->where('user_id', $userId);
+                        });
+                    });
                 }
             } catch (\Exception $e) {
                 \Log::error('Error checking auth token: ' . $e->getMessage());
             }
-        }
-        else{
+        } else {
+            // Return empty response if no authentication
             return response()->json([
                 'data' => [],
                 'current_page' => 0,
@@ -154,48 +157,43 @@ class PostController extends Controller
                 'has_more' => false
             ]);
         }
-
-        // Log the raw posts data
-        \Log::info('Raw posts data:', $posts->toArray());
-
-        $posts->getCollection()->transform(function ($post) {
+    
+        // Paginate the results
+        $posts = $query->paginate($perPage);
+    
+        // Log raw posts data
+        \Log::info('Raw posts data:', ['posts' => $posts->toArray()]);
+    
+        // Process each post
+        $posts->getCollection()->transform(function ($post) use ($followedUsers) {
+            // Check if the authenticated user follows the post owner
+            $post->is_following = in_array($post->user_id, $followedUsers);
+    
             $mediaArray = array_merge(
                 json_decode($post->images, true) ?? [],
                 json_decode($post->videos, true) ?? [],
                 json_decode($post->documents, true) ?? []
             );
-            
+    
             $formattedMedia = [];
-            
+    
             foreach ($mediaArray as $mediaItem) {
                 $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
                 $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
                 $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
-                
+    
                 $formattedMedia[] = [
                     'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
                     'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
                 ];
             }
-            
+    
             $post->media = $formattedMedia;
-           
+    
             return $post;
         });
-
-        \Log::info('Posts before filtering:', $posts->toArray());
-
-        // $postsArray = $posts->toArray(); // Convert to array
-        // $posts = array_filter($postsArray['data'], function($post) {
-        //     return $post['is_following']; // Accessing is_following as an array key
-        // });
-        
-        // // Log the filtered posts
-        // \Log::info('Filtered posts:', $posts);
-        
-        \Log::info('Posts after filtering:', $posts->toArray());
-
-
+    
+        // Return the response
         return response()->json([
             'data' => $posts->items(),
             'current_page' => $posts->currentPage(),
@@ -203,11 +201,15 @@ class PostController extends Controller
             'has_more' => $posts->hasMorePages()
         ]);
     }
+    
+    
+    
 
     public function store(Request $request)
     {
         $request->validate([
             'content' => 'required|string',
+            'visibility' => 'required|string|in:public,private',
             'category_id' => 'required|exists:categories,id',
             'images' => 'array|nullable',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:4086',
@@ -253,6 +255,7 @@ class PostController extends Controller
             }
 
             $post = Post::create([
+                'visibility' => $request->visibility,
                 'user_id' => Auth::id(),
                 'category_id' => $request->category_id,
                 'title' => $request->content,
@@ -279,9 +282,7 @@ class PostController extends Controller
                         $post->liked = $post->likes->contains('user_id', $userId);
                         
                         // Check if user is following the post creator
-                        $follow = FollowsHandler::where('follower_id', $userId)
-                            ->where('following_id', $post->user->id)
-                            ->first();
+                        $follow = FollowsHandler::where('follower_id',$userId)->where('following_id',$post->user->id)->first();
                         $post->is_following = $follow ? true : false;
                     }
                 } catch (\Exception $e) {
@@ -361,6 +362,11 @@ class PostController extends Controller
                 $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
                 if ($user && $user->tokenable) {
                     $userId = $user->tokenable->id;
+                    if($post->visibility == 'private' && $post->user->id != $userId){
+                        return Response::json([
+                            'message' => 'You cannot view this post',
+                        ], 403);
+                    }
                     $post->liked = $post->likes->contains('user_id', $userId);
                     
                     // Check if user is following the post creator
@@ -401,6 +407,7 @@ class PostController extends Controller
     public function update(Request $request, Post $post)
     {
         $request->validate([
+            'visibility' => 'required|string|in:public,private',
             'title' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4086',
@@ -466,6 +473,7 @@ class PostController extends Controller
 
             // Update post with new data
             $post->update([
+                'visibility' => $request->visibility,
                 'title' => $request->title,
                 'description' => $request->title,
                 'category_id' => $request->category_id,

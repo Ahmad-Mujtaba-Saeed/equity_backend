@@ -17,7 +17,8 @@ class Post extends Model
         'images',
         'videos',
         'documents',
-        'views_count'
+        'views_count',
+        'visibility'
     ];
 
     protected $casts = [
