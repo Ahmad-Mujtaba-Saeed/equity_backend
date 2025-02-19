@@ -66,7 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/user', function (Request $request) {
     return $request->user()->load('permissions');
 });
+    Route::get('/get-admins', [UserController::class, 'getAdmins']);
 
+    
     Route::get('/users', [UserController::class, 'getUsers']);
     Route::get('/users/search', [UserController::class, 'search']);
     Route::get('/users/{id}', [UserController::class, 'GetUser']);

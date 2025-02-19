@@ -131,20 +131,16 @@ class PostController extends Controller
                 $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
                 if ($user && $user->tokenable) {
                     $userId = $user->tokenable->id;
-                    foreach($posts as $post) {
+                    foreach($posts as $key => $post) {
                         $post->liked = $post->likes->contains('user_id', $userId);
                         $follow = FollowsHandler::where('follower_id',$userId)->where('following_id',$post->user->id)->first();
                         if($follow){
                             $post->is_following = true;
-                        }else{
+                        } else {
                             $post->is_following = false;
+                            unset($posts[$key]); // Remove post from collection if not following
                         }
                     }
-
-                    // // Sort posts to show is_following=true posts first
-                    // $posts = $posts->sortByDesc(function($post) {
-                    //     return [$post->is_following, $post->created_at];
-                    // })->values();
                 }
             } catch (\Exception $e) {
                 \Log::error('Error checking auth token: ' . $e->getMessage());
@@ -175,8 +171,22 @@ class PostController extends Controller
             }
             
             $post->media = $formattedMedia;
+           
             return $post;
         });
+
+        \Log::info('Posts before filtering:', $posts->toArray());
+
+        // $postsArray = $posts->toArray(); // Convert to array
+        // $posts = array_filter($postsArray['data'], function($post) {
+        //     return $post['is_following']; // Accessing is_following as an array key
+        // });
+        
+        // // Log the filtered posts
+        // \Log::info('Filtered posts:', $posts);
+        
+        \Log::info('Posts after filtering:', $posts->toArray());
+
 
         return response()->json([
             'data' => $posts->items(),

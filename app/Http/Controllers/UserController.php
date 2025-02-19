@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\UserPermission;
 use Illuminate\Support\Facades\Auth;
+use App\Models\FollowsHandler;
 
 class UserController extends Controller
 {
@@ -256,6 +257,42 @@ class UserController extends Controller
         ]);
     }
 
+    public function getAdmins(Request $request)
+    {
+        
+        $search = $request->query('search', '');
+        $currentUserId = auth()->id();
+
+        $query = User::select('id', 'name', 'email','roles','username', 'profile_image')
+            ->where('id', '!=', $currentUserId)
+            ->where(function($q) {
+                $q->where('roles', 'creators')->orWhere('roles', 'admin');
+            });
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('name')
+                      ->limit(50)
+                      ->get();
+
+        foreach($users as $user){
+        $follow = FollowsHandler::where('follower_id',$currentUserId)->where('following_id',$user->id)->first();
+            if($follow){
+                $user->is_following = true;
+            }else{
+                $user->is_following = false;
+            }
+        }
+        return response()->json([
+            'users' => $users
+        ]);
+    }
+
     public function GetUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
@@ -307,6 +344,8 @@ class UserController extends Controller
             ['user_id' => $user->id], // Use user_id as the identifier
             $permissionsData
         );
+
+        $user->roles == "creators";
     
         return response()->json(['message' => 'Permissions updated successfully.']);
     }
