@@ -103,10 +103,12 @@ class EducationContentController extends Controller
     {
         $educationContent = EducationContent::findOrFail($id);
 
-        // Check if the user is the owner of the content
-        if ($educationContent->user_id !== Auth::id() && Auth::user()->roles != "admin") {
-            return response()->json(['error' => 'Unauthorized'], 403);
+
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1){
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
+        
+
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -142,9 +144,8 @@ class EducationContentController extends Controller
     {
         $educationContent = EducationContent::findOrFail($id);
         
-        // Check if the user is the owner of the content
-        if ($educationContent->user_id !== Auth::id() && Auth::user()->roles != "admin") {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1){
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         // Delete the image file
