@@ -345,7 +345,16 @@ class UserController extends Controller
             $permissionsData
         );
 
-        $user->roles == "creators";
+        if($request->can_create_post_business ||
+            $request->can_create_post_fitness ||
+            $request->can_create_post_crypto ||
+            $request->can_create_post_mindset ||
+            $request->can_create_post_technology){
+            
+                    $user->roles = "creators";
+                    $user->save();
+
+        }
     
         return response()->json(['message' => 'Permissions updated successfully.']);
     }
