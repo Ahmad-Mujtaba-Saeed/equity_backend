@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class PostController extends Controller
 {
@@ -208,8 +209,8 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'content' => 'required|string',
-            'visibility' => 'required|string|in:public,private',
+            'title' => 'required|string',
+            'visibility' => 'required|string|in:public,private,password_protected',
             'category_id' => 'required|exists:categories,id',
             'images' => 'array|nullable',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:4086',
@@ -258,12 +259,16 @@ class PostController extends Controller
                 'visibility' => $request->visibility,
                 'user_id' => Auth::id(),
                 'category_id' => $request->category_id,
-                'title' => $request->content,
-                'description' => $request->content,
+                'title' => $request->title,
+                'description' => $request->title,
                 'images' => json_encode($images),
                 'videos' => json_encode($videos),
                 'documents' => json_encode($documents),
             ]);
+            if($request->visibility == 'password_protected'){
+                $post->password = Hash::make($request->password);
+                $post->save();
+            }
 
             // If we get here, the post was created successfully
             \DB::commit();
@@ -407,7 +412,7 @@ class PostController extends Controller
     public function update(Request $request, Post $post)
     {
         $request->validate([
-            'visibility' => 'required|string|in:public,private',
+            'visibility' => 'required|string|in:public,private,password_protected',
             'title' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4086',
@@ -417,7 +422,8 @@ class PostController extends Controller
             'remove_media.*' => 'string',
             'kept_images' => 'nullable|string',
             'kept_videos' => 'nullable|string',
-            'kept_documents' => 'nullable|string'
+            'kept_documents' => 'nullable|string',
+            'password' => 'nullable|string',
         ]);
 
         try {
@@ -481,6 +487,12 @@ class PostController extends Controller
                 'videos' => json_encode($videos),
                 'documents' => json_encode($documents),
             ]);
+
+            if($request->visibility === "password_protected"){
+                $post->update([
+                    'password' => Hash::make($request->password),
+                ]);
+            }
 
             \DB::commit();
 
