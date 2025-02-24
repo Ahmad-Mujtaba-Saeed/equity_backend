@@ -26,11 +26,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
+
 // Authentication Routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.forgot');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
+
+// Facebook Authentication Routes
+
+Route::post('/facebook/data-deletion', [SocialAuthController::class, 'facebookDataDeletion']);
+Route::get('/auth/facebook', [SocialAuthController::class, 'redirectToFacebook']);
+Route::get('/auth/facebook/callback', [SocialAuthController::class, 'handleFacebookCallback']);
+
+Route::get('/auth/instagram', [SocialAuthController::class, 'redirectToInstagram']);
+Route::get('/auth/instagram/callback', [SocialAuthController::class, 'handleInstagramCallback']);
 
 // Google Authentication Routes
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);
@@ -75,6 +86,7 @@ Route::get('/user', function (Request $request) {
 
     // Protected post routes
     Route::post('/posts', [PostController::class, 'store']);
+    Route::post('/post/unlock', [PostController::class, 'unlockPost']);
     Route::put('/posts/{post}', [PostController::class, 'update']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
     Route::post('/posts/{post}/like', [PostController::class, 'like']);

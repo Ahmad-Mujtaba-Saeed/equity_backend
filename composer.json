@@ -8,9 +8,11 @@
         "php": "^8.0.2",
         "doctrine/dbal": "*",
         "google/apiclient": "*",
-        "guzzlehttp/guzzle": "^7.2",
+        "guzzlehttp/guzzle": "^7.9",
+        "intervention/image": "^3.11",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.0",
+        "laravel/socialite": "^5.18",
         "laravel/tinker": "^2.7",
         "pusher/pusher-php-server": "^7.2"
     },

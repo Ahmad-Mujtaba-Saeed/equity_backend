@@ -104,6 +104,86 @@ class PostController extends Controller
 
         return response()->json($posts);
     }
+    private function applyBlurEffect($media) {
+        // Decode JSON string to array if needed
+        if (is_string($media)) {
+            $media = json_decode($media, true); // Decode to associative array
+        }
+    
+        // Assuming $media is now an array of image/video URLs or a single URL
+        if (is_array($media)) {
+            return array_map(function($item) {
+                return $this->blurMedia($item);
+            }, $media);
+        }
+        return $this->blurMedia($media);
+    }
+    
+    private function blurMedia($url) {
+        $path = public_path('data/images/' . basename($url));
+        
+        // Detect MIME type
+        $imageInfo = getimagesize($path);
+        if (!$imageInfo) {
+            return $url; // Not a valid image
+        }
+        
+        $mimeType = $imageInfo['mime'];
+        $randomName = 'blurred_' . Str::random(20) . '.' . pathinfo($path, PATHINFO_EXTENSION);
+        $blurredPath = public_path('data/images/' . $randomName);
+    
+        // Create image resource based on MIME type
+        switch ($mimeType) {
+            case 'image/jpeg':
+                $image = imagecreatefromjpeg($path);
+                break;
+            case 'image/png':
+                $image = imagecreatefrompng($path);
+                break;
+            case 'image/gif':
+                $image = imagecreatefromgif($path);
+                break;
+            case 'image/webp':
+                $image = imagecreatefromwebp($path);
+                break;
+            default:
+                return $url; // Unsupported format
+        }
+    
+        if ($image) {
+            // Apply multiple blur effects
+            for ($i = 0; $i < 95; $i++) {
+                imagefilter($image, IMG_FILTER_GAUSSIAN_BLUR);
+                imagefilter($image, IMG_FILTER_SELECTIVE_BLUR);
+                imagefilter($image, IMG_FILTER_GAUSSIAN_BLUR);
+            }
+    
+            // Save blurred image based on format
+            switch ($mimeType) {
+                case 'image/jpeg':
+                    imagejpeg($image, $blurredPath);
+                    break;
+                case 'image/png':
+                    imagepng($image, $blurredPath);
+                    break;
+                case 'image/gif':
+                    imagegif($image, $blurredPath);
+                    break;
+                case 'image/webp':
+                    imagewebp($image, $blurredPath);
+                    break;
+            }
+    
+            imagedestroy($image); // Free memory
+    
+            return $randomName; // Return the random filename
+        }
+    
+        return $url; // If image processing failed
+    }
+    
+    
+    
     public function index(Request $request)
     {
         $perPage = 6; // Set posts per page to 6
@@ -166,8 +246,55 @@ class PostController extends Controller
         \Log::info('Raw posts data:', ['posts' => $posts->toArray()]);
     
         // Process each post
-        $posts->getCollection()->transform(function ($post) use ($followedUsers) {
-            // Check if the authenticated user follows the post owner
+        $posts->getCollection()->transform(function ($post) use ($followedUsers, $request) {
+            
+            $token = $request->bearerToken();
+        
+            if ($token) {
+                    $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                    if ($user && $user->tokenable) {
+                        $userId = $user->tokenable->id;
+                        if($post->user_id != $userId){
+
+                        if($post->visibility == 'password_protected'){
+                            // Apply a blur effect to images and videos instead of removing them
+                            $post->images = json_encode($this->applyBlurEffect($post->images));
+                            $videos = [];
+                            foreach(json_decode($post->videos, true) as $video){
+                                $videos[] = "[Locked Video].mp4";
+                            }
+                            $post->videos = json_encode($videos);
+                            $post->documents = json_encode([]);
+                            $post->description = '<p style="filter: blur(5px);">
+                                                        This is a hardcore description that is intentionally blurred and not easily readable. 
+                                                        It contains sensitive information that should not be disclosed to unauthorized users. 
+                                                        The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
+                                                </p>';
+                            $post->makeHidden(['documents','password']);
+                        }
+                        
+                    }
+                    }
+                    
+                    }else{
+                        if($post->visibility == 'password_protected'){
+                            // Apply a blur effect to images and videos instead of removing them
+                            $post->images = json_encode($this->applyBlurEffect($post->images));
+                            $videos = [];
+                            foreach(json_decode($post->videos, true) as $video){
+                                $videos[] = "[Locked Video].mp4";
+                            }
+                            $post->videos = json_encode($videos);
+                            $post->documents = json_encode([]);
+                            $post->description = '<p style="filter: blur(5px);">
+                                                        This is a hardcore description that is intentionally blurred and not easily readable. 
+                                                        It contains sensitive information that should not be disclosed to unauthorized users. 
+                                                        The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
+                                                </p>';
+                            $post->makeHidden(['documents','password']);
+                        }
+                    }
+
             $post->is_following = in_array($post->user_id, $followedUsers);
     
             $mediaArray = array_merge(
@@ -210,6 +337,7 @@ class PostController extends Controller
     {
         $request->validate([
             'title' => 'required|string',
+            'description' => 'required|string',
             'visibility' => 'required|string|in:public,private,password_protected',
             'category_id' => 'required|exists:categories,id',
             'images' => 'array|nullable',
@@ -260,7 +388,7 @@ class PostController extends Controller
                 'user_id' => Auth::id(),
                 'category_id' => $request->category_id,
                 'title' => $request->title,
-                'description' => $request->title,
+                'description' => $request->description,
                 'images' => json_encode($images),
                 'videos' => json_encode($videos),
                 'documents' => json_encode($documents),
@@ -385,6 +513,53 @@ class PostController extends Controller
             }
         }
 
+        $token = $request->bearerToken();
+        
+        if ($token) {
+                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                if ($user && $user->tokenable) {
+                    $userId = $user->tokenable->id;
+                    if($post->user_id != $userId){
+
+                    if($post->visibility == 'password_protected'){
+                        // Apply a blur effect to images and videos instead of removing them
+                        $post->images = json_encode($this->applyBlurEffect($post->images));
+                        $videos = [];
+                        foreach(json_decode($post->videos, true) as $video){
+                            $videos[] = "[Locked Video].mp4";
+                        }
+                        $post->videos = json_encode($videos);
+                        $post->documents = json_encode([]);
+                        $post->description = '<p style="filter: blur(5px);">
+                                                    This is a hardcore description that is intentionally blurred and not easily readable. 
+                                                    It contains sensitive information that should not be disclosed to unauthorized users. 
+                                                    The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
+                                            </p>';
+                        $post->makeHidden(['documents','password']);
+                    }
+                    
+                }
+                }
+                
+                }else{
+                    if($post->visibility == 'password_protected'){
+                        // Apply a blur effect to images and videos instead of removing them
+                        $post->images = json_encode($this->applyBlurEffect($post->images));
+                        $videos = [];
+                        foreach(json_decode($post->videos, true) as $video){
+                            $videos[] = "[Locked Video].mp4";
+                        }
+                        $post->videos = json_encode($videos);
+                        $post->documents = json_encode([]);
+                        $post->description = '<p style="filter: blur(5px);">
+                                                    This is a hardcore description that is intentionally blurred and not easily readable. 
+                                                    It contains sensitive information that should not be disclosed to unauthorized users. 
+                                                    The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
+                                            </p>';
+                        $post->makeHidden(['documents','password']);
+                    }
+                }
+
         // Format media files
         $mediaArray = array_merge(
             json_decode($post->images, true) ?? [],
@@ -409,11 +584,82 @@ class PostController extends Controller
         return response()->json($post);
     }
 
+
+    public function unlockPost(Request $request)
+    {
+        // Validate the incoming request
+        $request->validate([
+            'id' => 'required|integer|exists:posts,id',
+            'password' => 'required|string',
+        ]);
+    
+        // Find the post by ID
+        $post = Post::find($request->id);
+    
+        // Check if the password matches
+        if (Hash::check($request->password, $post->password)) {
+                        // Load relationships and counts like in show method
+                        $post->load(['user', 'likes', 'comments.user', 'comments.replies.user']);
+                        $post->loadCount(['likes', 'comments']);
+            
+                        // Check if user has liked the post
+                        $token = $request->bearerToken();
+                        if ($token) {
+                            try {
+                                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                                if ($user && $user->tokenable) {
+                                    $userId = $user->tokenable->id;
+                                    $post->liked = $post->likes->contains('user_id', $userId);
+                                    
+                                    // Check if user is following the post creator
+                                    $follow = FollowsHandler::where('follower_id', $userId)
+                                        ->where('following_id', $post->user->id)
+                                        ->first();
+                                    $post->is_following = $follow ? true : false;
+                                }
+                            } catch (\Exception $e) {
+                                \Log::error('Error checking auth token: ' . $e->getMessage());
+                            }
+                        }
+            
+                        // Format media files
+                        $mediaArray = array_merge(
+                            json_decode($post->images, true) ?? [],
+                            json_decode($post->videos, true) ?? [],
+                            json_decode($post->documents, true) ?? []
+                        );
+                        
+                        $formattedMedia = [];
+                        foreach ($mediaArray as $mediaItem) {
+                            $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                            $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                            $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+                            
+                            $formattedMedia[] = [
+                                'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                                'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                            ];
+                        }
+                        
+                        $post->media = $formattedMedia;
+            
+                        return response()->json([
+                            'message' => 'Post unlock successfully',
+                            'post' => $post
+                        ]);
+        } else {
+            // If the password is incorrect, return an error response
+            return response()->json(['error' => 'Invalid password'], 403);
+        }
+    }
+
+
     public function update(Request $request, Post $post)
     {
         $request->validate([
             'visibility' => 'required|string|in:public,private,password_protected',
             'title' => 'required|string',
+            'description' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:4086',
             'videos.*' => 'nullable|mimes:mp4,mov,ogg|max:10240',
@@ -481,7 +727,7 @@ class PostController extends Controller
             $post->update([
                 'visibility' => $request->visibility,
                 'title' => $request->title,
-                'description' => $request->title,
+                'description' => $request->description,
                 'category_id' => $request->category_id,
                 'images' => json_encode($images),
                 'videos' => json_encode($videos),

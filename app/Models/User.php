@@ -39,6 +39,8 @@ class User extends Authenticatable
         'email_notification',
         'sms_notification',
         'google_id',
+        'facebook_id',
+        'instagram_id',
         'profile_image'
     ];
 
