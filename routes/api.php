@@ -128,7 +128,7 @@ Route::get('/user', function (Request $request) {
     });
 
     // Job Applications
-    Route::post('/job-applications', [JobApplicationController::class, 'store']);
+    Route::post('/job-application', [JobApplicationController::class, 'store']);
     Route::get('/job-applications', [JobApplicationController::class, 'index']);
     Route::put('/job-applications/{id}', [JobApplicationController::class, 'update']);
 

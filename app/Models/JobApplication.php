@@ -19,6 +19,7 @@ class JobApplication extends Model
         'country',
         'company',
         'job_title',
+        'cv_file_path', // Add this line
         'status'
     ];
 

@@ -38,10 +38,22 @@ class JobApplicationController extends Controller
         }
 
         try {
+            $user = Auth::user();
             // Create job application with user_id
+            $cvFilePath = null;
+        if ($request->hasFile('cv')) {
+            $cvFile = $request->file('cv');
+            $cvFileName = time() . '_' . $user->id . '_' . $cvFile->getClientOriginalName();
+            
+            // Move file to public/data/documents/job_applications
+            $cvFile->move(public_path('data/documents/job_applications'), $cvFileName);
+            
+            $cvFilePath = 'data/documents/job_applications/' . $cvFileName;
+        }
             $application = JobApplication::create(array_merge($request->all(), [
                 'user_id' => Auth::id(),
-                'status' => 'pending'
+                'status' => 'pending',
+                'cv_file_path' => $cvFilePath
             ]));
 
             return response()->json([
