@@ -218,6 +218,7 @@ class PostController extends Controller
                         $q->where(function ($q2) use ($followedUsers) {
                             // Show public posts only from followed users
                             $q2->where('visibility', 'public')
+                                ->orWhere('visibility', 'password_protected')
                                 ->whereIn('user_id', $followedUsers);
                         })
                         ->orWhere(function ($q3) use ($userId) {
@@ -272,7 +273,6 @@ class PostController extends Controller
                                                 </p>';
                             $post->makeHidden(['documents','password']);
                         }
-                        
                     }
                     }
                     
