@@ -230,7 +230,10 @@ class PostController extends Controller
             // Fetch posts only from followed users
             $query = Post::with(['user', 'likes', 'comments.user'])
                 ->withCount(['likes', 'comments'])
-                ->whereIn('user_id', $followedUsers)
+                ->where(function ($q) use ($userId, $followedUsers) {
+                    $q->whereIn('user_id', $followedUsers)
+                      ->orWhere('user_id', $userId);
+                })
                 ->where(function ($q) use ($userId) {
                     $q->where('visibility', 'public')
                       ->orWhere('visibility', 'password_protected')
