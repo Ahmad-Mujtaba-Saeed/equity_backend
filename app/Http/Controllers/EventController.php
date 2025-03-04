@@ -19,12 +19,15 @@ class EventController extends Controller
                   ->whereYear('event_date', $request->year);
         }
 
-        // Filter by type if provided
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
 
+        $query->where('is_active', 1)->orWhere('created_by', Auth::id());
+
         $events = $query->orderBy('event_date', 'asc')->get();
+
+
         return response()->json($events);
     }
 
@@ -48,8 +51,22 @@ class EventController extends Controller
         if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_events') !== 1) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-
+        
         $eventData = $validator->validated();
+        // Handle the main image upload
+        if (isset($request->main_image)) {
+            $imageData = $request->main_image;
+            $imageName = time() . '_main_image.jpg'; // Create a unique name for the image
+            $imagePath = public_path('data/images/' . $imageName);
+    
+            // Decode the base64 string
+            $image = str_replace('data:image/jpeg;base64,', '', $imageData);
+            $image = str_replace(' ', '+', $image);
+            file_put_contents($imagePath, base64_decode($image)); // Save the image
+    
+            $eventData['main_image'] = 'data/images/' . $imageName; // Save the relative path in the event data
+        }
+
         $eventData['created_by'] = Auth::id();
 
         $event = Event::create($eventData);
@@ -65,8 +82,9 @@ class EventController extends Controller
     public function update(Request $request, $id)
     {
         $event = Event::findOrFail($id);
-
+    
         $validator = Validator::make($request->all(), [
+            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'subtitle' => 'nullable|string|max:255',
@@ -76,13 +94,22 @@ class EventController extends Controller
             'type' => 'required|string|max:255',
             'is_active' => 'sometimes|boolean'
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-
+    
         $eventData = $validator->validated();
-
+    
+        // Handle the main image upload
+        if ($request->hasFile('main_image')) {
+            // Move the uploaded image to public/data/images directory
+            $image = $request->file('main_image');
+            $imageName = time() . '_' . $image->getClientOriginalName(); // Create a unique name for the image
+            $image->move(public_path('data/images'), $imageName); // Move the image to the specified path
+            $eventData['main_image'] = 'data/images/' . $imageName; // Save the relative path in the event data
+        }
+    
         $event->update($eventData);
         return response()->json($event);
     }

@@ -188,50 +188,10 @@ class PostController extends Controller
     {
         $perPage = 6; // Set posts per page to 6
     
-        // Base query
-        $query = Post::with(['user', 'likes', 'comments.user'])
-            ->withCount(['likes', 'comments'])
-            ->latest();
-    
-        // Filter by category if provided
-        if ($request->has('category')) {
-            $query->where('category_id', $request->category);
-        }
-    
         // Get bearer token from request header
         $token = $request->bearerToken();
-        $followedUsers = []; // Initialize an empty list
     
-        if ($token) {
-            try {
-                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
-                if ($user && $user->tokenable) {
-                    $userId = $user->tokenable->id;
-    
-                    // Get list of followed users
-                    $followedUsers = FollowsHandler::where('follower_id', $userId)
-                        ->pluck('following_id')
-                        ->toArray();
-    
-                    // Apply filtering at the query level
-                    $query->where(function ($q) use ($userId, $followedUsers) {
-                        $q->where(function ($q2) use ($followedUsers) {
-                            // Show public posts only from followed users
-                            $q2->where('visibility', 'public')
-                                ->orWhere('visibility', 'password_protected')
-                                ->whereIn('user_id', $followedUsers);
-                        })
-                        ->orWhere(function ($q3) use ($userId) {
-                            // Show private posts only if the user is the owner
-                            $q3->where('user_id', $userId);
-                        });
-                    });
-                }
-            } catch (\Exception $e) {
-                \Log::error('Error checking auth token: ' . $e->getMessage());
-            }
-        } else {
-            // Return empty response if no authentication
+        if (!$token) {
             return response()->json([
                 'data' => [],
                 'current_page' => 0,
@@ -240,94 +200,119 @@ class PostController extends Controller
             ]);
         }
     
-        // Paginate the results
-        $posts = $query->paginate($perPage);
-    
-        // Log raw posts data
-        \Log::info('Raw posts data:', ['posts' => $posts->toArray()]);
-    
-        // Process each post
-        $posts->getCollection()->transform(function ($post) use ($followedUsers, $request) {
-            
-            $token = $request->bearerToken();
-        
-            if ($token) {
-                    $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
-                    if ($user && $user->tokenable) {
-                        $userId = $user->tokenable->id;
-                        if($post->user_id != $userId){
-
-                        if($post->visibility == 'password_protected'){
-                            // Apply a blur effect to images and videos instead of removing them
-                            $post->images = json_encode($this->applyBlurEffect($post->images));
-                            $videos = [];
-                            foreach(json_decode($post->videos, true) as $video){
-                                $videos[] = "[Locked Video].mp4";
-                            }
-                            $post->videos = json_encode($videos);
-                            $post->documents = json_encode([]);
-                            $post->description = '<p style="filter: blur(5px);">
-                                                        This is a hardcore description that is intentionally blurred and not easily readable. 
-                                                        It contains sensitive information that should not be disclosed to unauthorized users. 
-                                                        The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
-                                                </p>';
-                            $post->makeHidden(['documents','password']);
-                        }
-                    }
-                    }
-                    
-                    }else{
-                        if($post->visibility == 'password_protected'){
-                            // Apply a blur effect to images and videos instead of removing them
-                            $post->images = json_encode($this->applyBlurEffect($post->images));
-                            $videos = [];
-                            foreach(json_decode($post->videos, true) as $video){
-                                $videos[] = "[Locked Video].mp4";
-                            }
-                            $post->videos = json_encode($videos);
-                            $post->documents = json_encode([]);
-                            $post->description = '<p style="filter: blur(5px);">
-                                                        This is a hardcore description that is intentionally blurred and not easily readable. 
-                                                        It contains sensitive information that should not be disclosed to unauthorized users. 
-                                                        The content is meant to convey a sense of mystery and intrigue, making it difficult to decipher.
-                                                </p>';
-                            $post->makeHidden(['documents','password']);
-                        }
-                    }
-
-            $post->is_following = in_array($post->user_id, $followedUsers);
-    
-            $mediaArray = array_merge(
-                json_decode($post->images, true) ?? [],
-                json_decode($post->videos, true) ?? [],
-                json_decode($post->documents, true) ?? []
-            );
-    
-            $formattedMedia = [];
-    
-            foreach ($mediaArray as $mediaItem) {
-                $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
-                $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
-                $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
-    
-                $formattedMedia[] = [
-                    'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
-                    'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
-                ];
+        try {
+            $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if (!$user || !$user->tokenable) {
+                return response()->json([
+                    'data' => [],
+                    'current_page' => 0,
+                    'last_page' => 0,
+                    'has_more' => false
+                ]);
             }
     
-            $post->media = $formattedMedia;
+            $userId = $user->tokenable->id;
     
-            return $post;
-        });
+            // Get list of followed users
+            $followedUsers = FollowsHandler::where('follower_id', $userId)
+                ->pluck('following_id')
+                ->toArray();
     
-        // Return the response
-        return response()->json([
-            'data' => $posts->items(),
-            'current_page' => $posts->currentPage(),
-            'last_page' => $posts->lastPage(),
-            'has_more' => $posts->hasMorePages()
-        ]);
+            if (empty($followedUsers)) {
+                return response()->json([
+                    'data' => [],
+                    'current_page' => 0,
+                    'last_page' => 0,
+                    'has_more' => false
+                ]);
+            }
+    
+            // Fetch posts only from followed users
+            $query = Post::with(['user', 'likes', 'comments.user'])
+                ->withCount(['likes', 'comments'])
+                ->whereIn('user_id', $followedUsers)
+                ->where(function ($q) use ($userId) {
+                    $q->where('visibility', 'public')
+                      ->orWhere('visibility', 'password_protected')
+                      ->orWhere(function ($q2) use ($userId) {
+                          // Allow private posts only if the user is the owner
+                          $q2->where('visibility', 'private')->where('user_id', $userId);
+                      });
+                })
+                ->latest();
+    
+            // Filter by category if provided
+            if ($request->has('category')) {
+                $query->where('category_id', $request->category);
+            }
+    
+            // Paginate results
+            $posts = $query->paginate($perPage);
+    
+            // Process each post
+            $posts->getCollection()->transform(function ($post) use ($followedUsers, $userId) {
+                // Set following status
+                $post->is_following = in_array($post->user_id, $followedUsers);
+    
+                // Apply blur to password-protected posts if the user is not the owner
+                if ($post->visibility == 'password_protected' && $post->user_id != $userId) {
+                    $post->images = json_encode($this->applyBlurEffect($post->images));
+    
+                    $videos = [];
+                    foreach (json_decode($post->videos, true) ?? [] as $video) {
+                        $videos[] = "[Locked Video].mp4";
+                    }
+                    $post->videos = json_encode($videos);
+                    $post->documents = json_encode([]);
+                    $post->description = '<p style="filter: blur(5px);">
+                                            This content is password protected. 
+                                            You need a password to view this post.
+                                          </p>';
+                    $post->makeHidden(['documents', 'password']);
+                }
+    
+                // Process media URLs
+                $mediaArray = array_merge(
+                    json_decode($post->images, true) ?? [],
+                    json_decode($post->videos, true) ?? [],
+                    json_decode($post->documents, true) ?? []
+                );
+    
+                $formattedMedia = [];
+                foreach ($mediaArray as $mediaItem) {
+                    $extension = pathinfo($mediaItem, PATHINFO_EXTENSION);
+                    $isVideo = in_array(strtolower($extension), ['mp4', 'webm', 'ogg']);
+                    $isDocument = in_array(strtolower($extension), ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']);
+    
+                    $formattedMedia[] = [
+                        'type' => $isVideo ? 'video' : ($isDocument ? 'document' : 'image'),
+                        'url' => url('data/' . ($isVideo ? 'videos' : ($isDocument ? 'documents' : 'images')) . '/' . $mediaItem)
+                    ];
+                }
+    
+                $post->media = $formattedMedia;
+    
+                return $post;
+            });
+    
+            // Return response
+            return response()->json([
+                'data' => $posts->items(),
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'has_more' => $posts->hasMorePages()
+            ]);
+    
+        } catch (\Exception $e) {
+            \Log::error('Error fetching posts: ' . $e->getMessage());
+    
+            return response()->json([
+                'data' => [],
+                'current_page' => 0,
+                'last_page' => 0,
+                'has_more' => false
+            ], 500);
+        }
     }
     
     

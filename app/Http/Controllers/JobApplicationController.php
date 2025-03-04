@@ -94,7 +94,7 @@ class JobApplicationController extends Controller
         }
         
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:review,accepted,rejected'
+            'status' => 'required|in:pending,accepted,rejected'
         ]);
 
         if ($validator->fails()) {
