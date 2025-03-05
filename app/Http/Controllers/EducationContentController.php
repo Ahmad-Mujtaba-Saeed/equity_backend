@@ -72,7 +72,7 @@ class EducationContentController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             'short_description' => 'required|string',
             'description' => 'required|string',
-            'video_url' => 'nullable|url'
+            'video_url' => 'required|url'
         ]);
         if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1) {
             return response()->json(['message' => 'Unauthorized'], 403);

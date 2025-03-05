@@ -15,6 +15,7 @@ class Event extends Model
         'title',
         'description',
         'subtitle',
+        'organizer_id',
         'event_date',
         'start_time',
         'end_time',
@@ -34,5 +35,10 @@ class Event extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function organizer()
+    {
+        return $this->belongsTo(User::class, 'organizer_id');
     }
 }

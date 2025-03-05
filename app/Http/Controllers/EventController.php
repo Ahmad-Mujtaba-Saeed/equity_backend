@@ -11,7 +11,7 @@ class EventController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Event::query()->with('creator');
+        $query = Event::query()->with('creator','organizer');
         
         // Filter by month and year if provided
         if ($request->has('month') && $request->has('year')) {
@@ -35,13 +35,14 @@ class EventController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
+            'organizer_id' => 'nullable|integer',
             'description' => 'nullable|string',
             'subtitle' => 'nullable|string|max:255',
             'event_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i|after:start_time',
             'type' => 'required|string|max:255',
-            'is_active' => 'sometimes|boolean'
+            'is_active' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -67,6 +68,21 @@ class EventController extends Controller
             $eventData['main_image'] = 'data/images/' . $imageName; // Save the relative path in the event data
         }
 
+        if (isset($request->banner_image)) {
+            $imageData = $request->banner_image;
+            $imageName = time() . '_banner_image.jpg'; // Create a unique name for the image
+            $imagePath = public_path('data/images/' . $imageName);
+    
+            // Decode the base64 string
+            $image = str_replace('data:image/jpeg;base64,', '', $imageData);
+            $image = str_replace(' ', '+', $image);
+            file_put_contents($imagePath, base64_decode($image)); // Save the image
+    
+            $eventData['banner_image'] = 'data/images/' . $imageName; // Save the relative path in the event data
+        }
+
+
+
         $eventData['created_by'] = Auth::id();
 
         $event = Event::create($eventData);
@@ -88,6 +104,7 @@ class EventController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'subtitle' => 'nullable|string|max:255',
+            'organizer_id' => 'nullable|integer',
             'event_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i|after:start_time',
