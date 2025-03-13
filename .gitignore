@@ -7,8 +7,7 @@
 .env
 .env.backup
 .env.production
-.phpunit.result.cache
-# storage/firebase/firebase-adminsdk.json
+.phpunit.result.cache 
 Homestead.json
 Homestead.yaml
 auth.json
@@ -17,3 +16,4 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/storage/firebase
