@@ -1,0 +1,209 @@
+{
+	"info": {
+		"_postman_id": "7002f757-d541-4180-ba90-c4df64eb1280",
+		"name": "EquityCircle",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "28327003"
+	},
+	"item": [
+		{
+			"name": "Feeds related",
+			"item": [
+				{
+					"name": "get_feeds",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "163|ZBZVhya3JBZUjVVSlhZkzFl5BPgkSIlDPDfKE0Hcb85ec3e2",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://equity-api.techtrack.online/api/posts?page=1&category=1",
+							"protocol": "https",
+							"host": [
+								"equity-api",
+								"techtrack",
+								"online"
+							],
+							"path": [
+								"api",
+								"posts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "category",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "like_unlike_feed",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "163|ZBZVhya3JBZUjVVSlhZkzFl5BPgkSIlDPDfKE0Hcb85ec3e2",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "https://equity-api.techtrack.online/api/posts/5/like",
+							"protocol": "https",
+							"host": [
+								"equity-api",
+								"techtrack",
+								"online"
+							],
+							"path": [
+								"api",
+								"posts",
+								"5",
+								"like"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "feed_comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Hi ,This is suppose to be a comment",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://equity-api.techtrack.online/api/posts/36/comment",
+							"protocol": "https",
+							"host": [
+								"equity-api",
+								"techtrack",
+								"online"
+							],
+							"path": [
+								"api",
+								"posts",
+								"36",
+								"comment"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "login/register",
+			"item": [
+				{
+					"name": "login_request",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "admin@gmail.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://equity-api.techtrack.online/api/login",
+							"protocol": "https",
+							"host": [
+								"equity-api",
+								"techtrack",
+								"online"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "register_request",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Ahmad",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "testing1122@gmail.com",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "demo1234",
+									"type": "text"
+								},
+								{
+									"key": "password_confirmation",
+									"value": "demo1234",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://equity-api.techtrack.online/api/register",
+							"protocol": "https",
+							"host": [
+								"equity-api",
+								"techtrack",
+								"online"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
