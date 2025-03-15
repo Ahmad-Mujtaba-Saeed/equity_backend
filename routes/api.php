@@ -47,7 +47,7 @@ Route::get('/auth/instagram/callback', [SocialAuthController::class, 'handleInst
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle']);
 Route::post('auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
-Route::post('auth/google/callback/app', [FireBaseAuthController::class, 'handleGoogleCallbackForApp']);
+Route::post('auth/google/callback/app', [AuthController::class, 'handleGoogleCallbackForApp']);
 
 
 // Public post routes
