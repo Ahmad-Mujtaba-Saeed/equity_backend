@@ -19,6 +19,9 @@ use App\Models\UserPermission;
 use Illuminate\Support\Facades\Http;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Auth as AppAuth;
+use Google_Client;
+
+
 
 
 class AuthController extends Controller
@@ -88,67 +91,105 @@ class AuthController extends Controller
         return Socialite::driver('google')->stateless()->redirect();
     }
 
-    public function handleGoogleCallbackForApp(Request $request)
-    {
-        try {
-            $idToken = $request->input('id_token');
+    // public function handleGoogleCallbackForApp(Request $request)
+    // {
+    //     try {
+    //         $idToken = $request->input('id_token');
+    
+    //         if (!$idToken) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'ID token is required'
+    //             ], 400);
+    //         }
+    
+    //         // ✅ Use Firebase Admin SDK to verify token
+    //         $firebase = (new Factory)
+    //             ->withServiceAccount(config('services.firebase.credentials')) // ✅ Ensure this path is correct
+    //             ->createAuth();
+    
+    //         $verifiedIdToken = $firebase->verifyIdToken($idToken);
+    
+    //         if (!$verifiedIdToken) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Invalid ID token'
+    //             ], 401);
+    //         }
+    
+    //         // ✅ Extract user details
+    //         $uid = $verifiedIdToken->claims()->get('sub'); // Google UID
+    //         $email = $verifiedIdToken->claims()->get('email');
+    //         $name = $verifiedIdToken->claims()->get('name');
+    //         $avatar = $verifiedIdToken->claims()->get('picture');
+    
+    //         if (!$email) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Invalid token'
+    //             ], 401);
+    //         }
+    
+    //         // ✅ Find or create user in database
+    //         $user = User::updateOrCreate(
+    //             ['email' => $email],
+    //             [
+    //                 'name' => $name,
+    //                 'google_id' => $uid,
+    //                 'email_verified_at' => now(),
+    //                 'profile_image' => $avatar,
+    //             ]
+    //         );
+    
+    //         // ✅ Generate access token
+    //         $token = $user->createToken('google-token')->plainTextToken;
+    
+    //         return response()->json([
+    //             'status' => true,
+    //             'access_token' => $token,
+    //             'token_type' => 'Bearer',
+    //             'user' => $user
+    //         ]);
+    //     } catch (Exception $e) {
+    //         \Log::error('Google authentication error: ' . $e->getMessage());
+    
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Failed to authenticate with Google',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
-            if (!$idToken) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'ID token is required'
-                ], 400);
-            }
+    public function handleGoogleLoginRequestApp(Request $request) {
+        $googleToken = $request->input('id_token');
 
-            // ✅ Initialize Firebase Admin SDK
-            $firebase = (new Factory)
-                ->withServiceAccount(config('services.firebase.credentials'))
-                ->createAuth();
-
-            // ✅ Verify ID Token using Firebase
-            $verifiedIdToken = $firebase->verifyIdToken($idToken);
-
-            $uid = $verifiedIdToken->claims()->get('sub'); // Google UID
-            $email = $verifiedIdToken->claims()->get('email');
-            $name = $verifiedIdToken->claims()->get('name');
-            $avatar = $verifiedIdToken->claims()->get('picture');
-
-            if (!$email) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Invalid token'
-                ], 401);
-            }
-
-            // ✅ Find or create user
-            $user = User::updateOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $name,
-                    'google_id' => $uid,
-                    'email_verified_at' => now(),
-                    'profile_image' => $avatar,
-                ]
-            );
-
-            // ✅ Create Laravel Sanctum Access Token
-            $token = $user->createToken('google-token')->plainTextToken;
-
-            return response()->json([
-                'status' => true,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'user' => $user
-            ]);
-        } catch (Exception $e) {
-            \Log::error('Google authentication error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to authenticate with Google',
-                'error' => $e->getMessage()
-            ], 500);
+        if (!$googleToken) {
+            return response()->json(['error' => 'Missing Google token'], 400);
         }
+    
+        // Manually verify token with Google's API
+        $response = Http::get("https://oauth2.googleapis.com/tokeninfo?id_token=" . $googleToken);
+    
+        if ($response->failed()) {
+            return response()->json(['error' => 'Invalid Google token'], 401);
+        }
+    
+        $payload = $response->json();
+        $user = User::updateOrCreate(
+            ['email' => $payload['email']],
+            [
+                'name' => $payload['name'],
+                'email' => $payload['email'],
+                'google_id' => $payload['sub'], // Google Unique ID
+                'profile_image' => $payload['picture'],
+            ]
+        );
+    
+        // Generate Laravel JWT token
+        $token = $user->createToken('auth_token')->plainTextToken;
+    
+        return response()->json(['user' => $user, 'access_token' => $token]);
     }
 
     public function handleGoogleCallback(Request $request)

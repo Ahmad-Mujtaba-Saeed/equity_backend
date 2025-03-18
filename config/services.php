@@ -48,4 +48,7 @@ return [
     'firebase' => [
         'credentials' => storage_path('firebase/firebase-adminsdk.json'),
     ],
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'), // ✅ Must match Firebase Web Client ID
+    ],
 ];
