@@ -12,6 +12,7 @@ class EqNotification extends Model
     protected $fillable = [
         'user_id',
         'by_user',
+        'archive',
         'foreign_id',
         'notif_type',
         'content',
@@ -77,6 +78,12 @@ class EqNotification extends Model
     /**
      * Get formatted notification message
      */
+
+     public function sendtoarchive(){
+        $this->archive = true;
+        $this->save();
+    }
+    
     public function getFormattedMessage()
     {
         if ($this->content) {
