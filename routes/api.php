@@ -50,6 +50,8 @@ Route::post('auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 Route::post('auth/google/callback/app', [AuthController::class, 'handleGoogleCallbackForApp']);
 
 
+Route::post('/auth/google-login', [AuthController::class, 'handleGoogleLoginRequestApp']);
+
 // Public post routes
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/user_posts', [PostController::class, 'UserPosts']);
