@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 class PostController extends Controller
 {
@@ -334,6 +335,7 @@ class PostController extends Controller
             'videos.*' => 'mimes:mp4,mov,ogg|max:10240',
             'documents' => 'array|nullable',
             'documents.*' => 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt|max:5120',
+            
         ]);
 
         $permissions = json_decode(Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_post_category'), true);
@@ -859,6 +861,11 @@ class PostController extends Controller
 
             // Create notification for post owner
             if ($post->user_id !== Auth::id()) {
+                $user = User::find($post->user_id);
+                if ($user && $user->fcm_token) {
+                    $firebaseResponse = sendPushNotification($user, "Liked post",  Auth::user()->name . ' liked your post');
+                    \Log::info('FCM Response: ', $firebaseResponse);
+                }
                 EqNotification::create([
                     'user_id' => $post->user_id,
                     'by_user' => Auth::id(),

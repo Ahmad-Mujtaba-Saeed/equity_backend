@@ -53,6 +53,7 @@ class AuthController extends Controller
         // Validate the incoming request
         try {
             $validatedData = $request->validate([
+                'firebase_uid' => 'nullable',
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
                 'password' => 'required|string|min:8|confirmed',
@@ -66,6 +67,7 @@ class AuthController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => bcrypt($validatedData['password']),
+            'firebase_uid' => $validatedData['firebase_uid'] ?? null,
         ]);
 
         $user_permission = UserPermission::updateOrCreate([
@@ -160,6 +162,26 @@ class AuthController extends Controller
     //         ], 500);
     //     }
     // }
+    public function saveToken(Request $request)
+    {
+        $request->validate([
+            'firebase_uid' => 'required',
+            'fcm_token' => 'required',
+        ]);
+
+        // Find user by Firebase UID
+        $user = User::where('firebase_uid', $request->firebase_uid)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        // Store FCM token
+        $user->fcm_token = $request->fcm_token;
+        $user->save();
+
+        return response()->json(['success' => true, 'message' => 'Token saved']);
+    }
 
     public function handleGoogleLoginRequestApp(Request $request) {
         $googleToken = $request->input('id_token');
