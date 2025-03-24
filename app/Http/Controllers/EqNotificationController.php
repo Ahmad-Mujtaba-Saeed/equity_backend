@@ -6,6 +6,7 @@ use App\Models\EqNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\FollowsHandler;
 
 class EqNotificationController extends Controller
 {
@@ -14,8 +15,13 @@ class EqNotificationController extends Controller
      */
     public function index(Request $request)
     {
-        // First, get message notifications grouped by conversation
-        $messageNotifications = EqNotification::where('user_id', Auth::id())
+        $followedUsers = FollowsHandler::where('follower_id', Auth::id())
+        ->pluck('following_id')
+        ->toArray();
+        if($request->has('key') && $request->key === 'all') {
+                    // First, get message notifications grouped by conversation
+            $messageNotifications = EqNotification::where('user_id', Auth::id())
+
             ->where('notif_type', 'message')
             ->where('is_read', false)
             ->select([
@@ -31,8 +37,8 @@ class EqNotificationController extends Controller
             ])
             ->groupBy('foreign_id');
 
-        // Then get all other notifications
-        $otherNotifications = EqNotification::where('user_id', Auth::id())
+            // Then get all other notifications
+            $otherNotifications = EqNotification::where('user_id', Auth::id())
             ->where('notif_type', '!=', 'message')
             ->select([
                 'foreign_id',
@@ -45,6 +51,77 @@ class EqNotificationController extends Controller
                 'created_at',
                 'is_read'
             ]);
+        }
+        else if($request->has('key') && $request->key === 'following') {
+            // First, get message notifications grouped by conversation
+            $messageNotifications = EqNotification::where('user_id', Auth::id())
+            ->where('by_user', $followedUsers)
+                ->where('notif_type', 'message')
+                ->where('is_read', false)
+                ->select([
+                    'foreign_id',
+                    DB::raw('COUNT(*) as message_count'),
+                    DB::raw('MAX(id) as id'),
+                    DB::raw('MAX(user_id) as user_id'),
+                    DB::raw('MAX(by_user) as by_user'),
+                    DB::raw('MAX(notif_type) as notif_type'),
+                    DB::raw('MAX(content) as content'),
+                    DB::raw('MAX(created_at) as created_at'),
+                    DB::raw('MAX(is_read) as is_read')
+                ])
+                ->groupBy('foreign_id');
+    
+            // Then get all other notifications
+            $otherNotifications = EqNotification::where('user_id', Auth::id())
+            ->where('by_user', $followedUsers)
+                ->where('notif_type', '!=', 'message')
+                ->select([
+                    'foreign_id',
+                    DB::raw('1 as message_count'),
+                    'id',
+                    'user_id',
+                    'by_user',
+                    'notif_type',
+                    'content',
+                    'created_at',
+                    'is_read'
+                ]);
+        }
+        else if($request->has('key') && $request->key === 'archive') {
+            // First, get message notifications grouped by conversation
+            $messageNotifications = EqNotification::where('user_id', Auth::id())
+            ->where('archive', true)
+                ->where('notif_type', 'message')
+                ->where('is_read', false)
+                ->select([
+                    'foreign_id',
+                    DB::raw('COUNT(*) as message_count'),
+                    DB::raw('MAX(id) as id'),
+                    DB::raw('MAX(user_id) as user_id'),
+                    DB::raw('MAX(by_user) as by_user'),
+                    DB::raw('MAX(notif_type) as notif_type'),
+                    DB::raw('MAX(content) as content'),
+                    DB::raw('MAX(created_at) as created_at'),
+                    DB::raw('MAX(is_read) as is_read')
+                ])
+                ->groupBy('foreign_id');
+    
+            // Then get all other notifications
+            $otherNotifications = EqNotification::where('user_id', Auth::id())
+            ->where('archive', true)
+                ->where('notif_type', '!=', 'message')
+                ->select([
+                    'foreign_id',
+                    DB::raw('1 as message_count'),
+                    'id',
+                    'user_id',
+                    'by_user',
+                    'notif_type',
+                    'content',
+                    'created_at',
+                    'is_read'
+                ]);
+        }
 
         // Combine queries and add relationships
         $query = $otherNotifications->union($messageNotifications)
@@ -121,6 +198,17 @@ class EqNotificationController extends Controller
             ->findOrFail($id);
             
         $notification->markAsRead();
+        
+        return response()->json($notification);
+    }
+
+
+    public function sendtoarchive($id)
+    {
+        $notification = EqNotification::where('user_id', Auth::id())
+            ->findOrFail($id);
+            
+        $notification->sendtoarchive();
         
         return response()->json($notification);
     }
