@@ -41,6 +41,8 @@ class User extends Authenticatable
         'google_id',
         'facebook_id',
         'instagram_id',
+        'firebase_uid',
+        'fcm_token',
         'profile_image'
     ];
 

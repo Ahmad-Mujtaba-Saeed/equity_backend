@@ -51,6 +51,8 @@ Route::post('auth/google/callback/app', [AuthController::class, 'handleGoogleCal
 
 
 Route::post('/auth/google-login', [AuthController::class, 'handleGoogleLoginRequestApp']);
+Route::post('/save-token', [AuthController::class, 'saveToken']);
+
 
 // Public post routes
 Route::get('/posts', [PostController::class, 'index']);
