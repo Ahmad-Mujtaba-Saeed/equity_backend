@@ -304,14 +304,15 @@ class UserController extends Controller
     {
         // Validate the incoming request
         $request->validate([
-            'can_create_jobs' => 'required|boolean',
-            'can_create_events' => 'required|boolean',
-            'can_create_education' => 'required|boolean',
-            'can_create_post_business' => 'required|boolean',
-            'can_create_post_fitness' => 'required|boolean',
-            'can_create_post_crypto' => 'required|boolean',
-            'can_create_post_mindset' => 'required|boolean',
-            'can_manage_users' => 'required|boolean',
+            'make_admin' => 'required|boolean',
+            // 'can_create_jobs' => 'required|boolean',
+            // 'can_create_events' => 'required|boolean',
+            // 'can_create_education' => 'required|boolean',
+            // 'can_create_post_business' => 'required|boolean',
+            // 'can_create_post_fitness' => 'required|boolean',
+            // 'can_create_post_crypto' => 'required|boolean',
+            // 'can_create_post_mindset' => 'required|boolean',
+            // 'can_manage_users' => 'required|boolean',
         ]);
     
 
@@ -321,23 +322,60 @@ class UserController extends Controller
 
         // Find the user
         $user = User::findOrFail($id);
+
+        if($request->make_admin){
+            $can_create_post_category = json_encode([
+                 1,
+                2,
+                 3,
+                 4 ,
+                 5 ,
+           ]);
+            $permissionsData = [
+                'can_create_jobs' => true,
+                'can_create_events' => true,
+                'can_create_education' => true,
+                'can_create_post_category' => $can_create_post_category,
+                'can_manage_users' => false
+            ];
+            $user->roles = "creators";
+            $user->save();
+        }
+        else{
+            $can_create_post_category = json_encode([
+                0,
+               0,
+                0,
+                0 ,
+                0 ,
+          ]);
+            $permissionsData = [
+                'can_create_jobs' => false,
+                'can_create_events' => false,
+                'can_create_education' => false,
+                'can_create_post_category' => $can_create_post_category,
+                'can_manage_users' => false
+            ];
+            $user->roles = "user";
+            $user->save();
+        }
     
-        $request->can_create_post_category = json_encode([
-             $request->can_create_post_business ? 1 :0,
-             $request->can_create_post_fitness ? 2 :0,
-             $request->can_create_post_crypto ? 3 :0,
-             $request->can_create_post_mindset ? 4 :0,
-             $request->can_create_post_mindset ? 5 :0,
-        ]);
+        // $request->can_create_post_category = json_encode([
+        //      $request->can_create_post_business ? 1 :0,
+        //      $request->can_create_post_fitness ? 2 :0,
+        //      $request->can_create_post_crypto ? 3 :0,
+        //      $request->can_create_post_mindset ? 4 :0,
+        //      $request->can_create_post_mindset ? 5 :0,
+        // ]);
     
-        // Update permissions
-        $permissionsData = [
-            'can_create_jobs' => $request->can_create_jobs,
-            'can_create_events' => $request->can_create_events,
-            'can_create_education' => $request->can_create_education,
-            'can_create_post_category' => $request->can_create_post_category,
-            'can_manage_users' => $request->can_manage_users
-        ];
+        // // Update permissions
+        // $permissionsData = [
+        //     'can_create_jobs' => $request->can_create_jobs,
+        //     'can_create_events' => $request->can_create_events,
+        //     'can_create_education' => $request->can_create_education,
+        //     'can_create_post_category' => $request->can_create_post_category,
+        //     'can_manage_users' => $request->can_manage_users
+        // ];
     
         // Use the user_id to update or create the permissions
         UserPermission::updateOrCreate(
@@ -345,16 +383,15 @@ class UserController extends Controller
             $permissionsData
         );
 
-        if($request->can_create_post_business ||
-            $request->can_create_post_fitness ||
-            $request->can_create_post_crypto ||
-            $request->can_create_post_mindset ||
-            $request->can_create_post_technology){
+        // if($request->can_create_post_business ||
+        //     $request->can_create_post_fitness ||
+        //     $request->can_create_post_crypto ||
+        //     $request->can_create_post_mindset ||
+        //     $request->can_create_post_technology){
             
-                    $user->roles = "creators";
-                    $user->save();
 
-        }
+
+        // }
     
         return response()->json(['message' => 'Permissions updated successfully.']);
     }

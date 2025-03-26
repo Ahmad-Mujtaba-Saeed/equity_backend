@@ -33,7 +33,7 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/FcmHelper.php"
+            "app/helpers/FcmHelper.php"
         ]
     },
     "autoload-dev": {
