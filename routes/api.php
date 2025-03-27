@@ -88,6 +88,7 @@ Route::get('/user', function (Request $request) {
 
     
     Route::get('/users', [UserController::class, 'getUsers']);
+    Route::get('/users/is_admin', [UserController::class, 'IsAdmin']);
     Route::get('/users/search', [UserController::class, 'search']);
     Route::get('/users/{id}', [UserController::class, 'GetUser']);
 

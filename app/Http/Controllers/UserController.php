@@ -300,6 +300,47 @@ class UserController extends Controller
         return response()->json($user);
     }
 
+    public function IsAdmin(Request $request)
+    {
+        try {
+            $user = $request->user()->load('permissions'); // Load user with permissions
+            $userData = $user->toArray(); // Convert to array
+    
+            // Access the permissions array
+            $permissions = $userData['permissions'][0]; // Get the first permission object
+    
+            // Check if can_create_post_category is null or empty
+            if (is_null($permissions['can_create_post_category']) || empty($permissions['can_create_post_category'])) {
+                return response()->json(['is_admin' => false]); // Handle null or empty case
+            }
+    
+            // Decode the can_create_post_category JSON string to an array
+            $postCategoryPermissions = json_decode($permissions['can_create_post_category'], true);
+    
+            // Check if decoding was successful and it's an array
+            if (!is_array($postCategoryPermissions)) {
+                return response()->json(['is_admin' => false]); // Handle decoding failure
+            }
+    
+            // Define the required permissions
+            $requiredPermissions = [1, 2, 3, 4, 5];
+    
+            // Check if the user has any of the specified permissions
+            if (!empty(array_intersect($requiredPermissions, $postCategoryPermissions))) {
+                return response()->json(['is_admin' => true]);
+            }
+    
+            return response()->json(['is_admin' => false]);
+    
+        } catch (\Exception $e) {
+            // Log the exception message for debugging
+            \Log::error('Error in IsAdmin method: ' . $e->getMessage());
+    
+            // Return a response indicating an error occurred
+            return response()->json(['error' => 'An error occurred while checking admin status.'], 500);
+        }
+    }
+
     public function UpdatePermissions(Request $request, $id)
     {
         // Validate the incoming request
