@@ -223,6 +223,7 @@ class AuthController extends Controller
         try {
             $user = $this->firebaseAuth->createUser([
                 'email' => $payload['email'],
+                'emailVerified' => true,
             ]);
 
             // return response()->json([
@@ -274,6 +275,7 @@ class AuthController extends Controller
             try {
                 $user = $this->firebaseAuth->createUser([
                     'email' => $payload['email'],
+                    'emailVerified' => true,  // User can't log in until email is verified
                 ]);
             } catch (\Exception $e) {
                 return response()->json(['error' => $e->getMessage()], 500);
