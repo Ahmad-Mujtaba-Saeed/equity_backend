@@ -26,10 +26,18 @@ use Google_Client;
 
 class AuthController extends Controller
 {
+
+    protected $firebaseAuth;
+
+    public function __construct(AppAuth $firebaseAuth)
+    {
+        $this->firebaseAuth = $firebaseAuth;
+    }
     public function login(Request $request)
     {
         // Validate the incoming request for email and password
         $credentials = $request->validate([
+            'firebase_uid' => 'nullable',
             'email' => 'required|email',
             'password' => 'required'
         ]);
@@ -60,6 +68,20 @@ class AuthController extends Controller
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        }
+
+        try {
+            $user = $this->firebaseAuth->createUser([
+                'email' => $request->email,
+                'password' => $request->password,
+            ]);
+
+            // return response()->json([
+            //     'message' => 'User created successfully',
+            //     'firebase_uid' => $user->uid,
+            // ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
 
         // Create the user
@@ -198,6 +220,18 @@ class AuthController extends Controller
         }
     
         $payload = $response->json();
+        try {
+            $user = $this->firebaseAuth->createUser([
+                'email' => $payload['email'],
+            ]);
+
+            // return response()->json([
+            //     'message' => 'User created successfully',
+            //     'firebase_uid' => $user->uid,
+            // ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
         $user = User::updateOrCreate(
             ['email' => $payload['email']],
             [
@@ -236,6 +270,13 @@ class AuthController extends Controller
                     'status' => false,
                     'message' => 'Invalid token'
                 ], 401);
+            }
+            try {
+                $user = $this->firebaseAuth->createUser([
+                    'email' => $payload['email'],
+                ]);
+            } catch (\Exception $e) {
+                return response()->json(['error' => $e->getMessage()], 500);
             }
 
             // Find or create user

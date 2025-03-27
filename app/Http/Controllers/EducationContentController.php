@@ -157,6 +157,6 @@ class EducationContentController extends Controller
         }
 
         $educationContent->delete();
-        return response()->json(null, 204);
+        return response()->json(['message' => 'Content deleted successfully'], 204);
     }
 }
