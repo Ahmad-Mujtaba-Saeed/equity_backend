@@ -18,6 +18,7 @@ class JobApplicationController extends Controller
             'email' => 'required|email|max:255',
             'country' => 'required|string|max:2',
             'company' => 'required|string|max:255',
+            'cv' => 'required',
             'job_title' => 'required|string|max:255',
         ]);
 
