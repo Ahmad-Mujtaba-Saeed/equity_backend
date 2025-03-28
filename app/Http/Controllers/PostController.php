@@ -662,9 +662,9 @@ class PostController extends Controller
             'password' => 'nullable|string',
         ]);
 
-        if ($request->errors()->count() > 0) {
-            return response()->json(['error' => $request->errors()->first()], 422);
-        }
+        // if ($request->errors()->count() > 0) {
+        //     return response()->json(['error' => $request->errors()->first()], 422);
+        // }
 
 
         try {

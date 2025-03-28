@@ -71,7 +71,7 @@ class AuthController extends Controller
         }
 
         try {
-            $user = $this->firebaseAuth->createUser([
+            $firebaseuser = $this->firebaseAuth->createUser([
                 'email' => $request->email,
                 'password' => $request->password,
             ]);
@@ -89,7 +89,7 @@ class AuthController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => bcrypt($validatedData['password']),
-            'firebase_uid' => $validatedData['firebase_uid'] ?? null,
+            'firebase_uid' => $firebaseuser->uid ?? null,
         ]);
 
         $user_permission = UserPermission::updateOrCreate([
@@ -221,27 +221,46 @@ class AuthController extends Controller
     
         $payload = $response->json();
         try {
-            $user = $this->firebaseAuth->createUser([
+            $firebaseUser = $this->firebaseAuth->getUserByEmail($payload['email']);
+             $user = User::updateOrCreate(
+                    ['email' => $payload['email']],
+                    [
+                        'name' => $payload['name'],
+                        'email' => $payload['email'],
+                        'google_id' => $payload['sub'], // Google Unique ID
+                        'profile_image' => $payload['picture'],
+                    ]
+                );
+        } catch (\Kreait\Firebase\Exception\Auth\UserNotFound $e) {
+            // User does not exist in Firebase
+            $firebaseuser = $this->firebaseAuth->createUser([
                 'email' => $payload['email'],
                 'emailVerified' => true,
             ]);
+            $user = User::updateOrCreate(
+                ['email' => $payload['email']],
+                [
+                    'name' => $payload['name'],
+                    'email' => $payload['email'],
+                    'google_id' => $payload['sub'], // Google Unique ID
+                    'profile_image' => $payload['picture'],
+                ]
+            );
+            if($firebaseuser->uid){
+                $user->firebase_uid = $firebaseuser->uid;
+                $user->save();
+            }
+        }
+
 
             // return response()->json([
             //     'message' => 'User created successfully',
             //     'firebase_uid' => $user->uid,
             // ], 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-        $user = User::updateOrCreate(
-            ['email' => $payload['email']],
-            [
-                'name' => $payload['name'],
-                'email' => $payload['email'],
-                'google_id' => $payload['sub'], // Google Unique ID
-                'profile_image' => $payload['picture'],
-            ]
-        );
+        // } catch (\Exception $e) {
+        //     // return response()->json(['error' => $e->getMessage()], 500);
+        // }
+
     
         // Generate Laravel JWT token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -272,35 +291,108 @@ class AuthController extends Controller
                     'message' => 'Invalid token'
                 ], 401);
             }
+            // try {
+
             try {
-                $user = $this->firebaseAuth->createUser([
-                    'email' => $payload['email'],
-                    'emailVerified' => true,  // User can't log in until email is verified
+                $firebaseUser = $this->firebaseAuth->getUserByEmail($payload['email']);
+                $user = User::updateOrCreate(
+                    ['email' => $payload['email']],
+                    [
+                        'name' => $payload['name'],
+                        'google_id' => $payload['sub'],
+    
+                        'email_verified_at' => now(),
+                    ]
+                );
+                // if($firebaseuser->uid){
+                // $user->firebase_uid = $firebaseuser->uid;
+                // }
+                $user_permission = UserPermission::updateOrCreate([
+                    'user_id' => $user->id,
                 ]);
-            } catch (\Exception $e) {
-                return response()->json(['error' => $e->getMessage()], 500);
-            }
-
-            // Find or create user
-            $user = User::updateOrCreate(
-                ['email' => $payload['email']],
-                [
-                    'name' => $payload['name'],
-                    'google_id' => $payload['sub'],
-                    'email_verified_at' => now(),
-                ]
-            );
-            $user_permission = UserPermission::updateOrCreate([
-                'user_id' => $user->id,
-            ]);
-            
-            $user->permission_id = $user_permission->id;
-            $user->save();
-
-            if (!$user->profile_image) {
-                $user->profile_image = $payload['picture'];
+                
+                $user->permission_id = $user_permission->id;
                 $user->save();
+    
+                if (!$user->profile_image) {
+                    $user->profile_image = $payload['picture'];
+                    $user->save();
+                }
+            } catch (\Kreait\Firebase\Exception\Auth\UserNotFound $e) {
+                // User does not exist, create them in Firebase
+                $firebaseUser = $this->firebaseAuth->createUser([
+                    'email' => $payload['email'],
+                    'emailVerified' => true,
+                ]);
+                $user = User::updateOrCreate(
+                    ['email' => $payload['email']],
+                    [
+                        'name' => $payload['name'],
+                        'google_id' => $payload['sub'],
+    
+                        'email_verified_at' => now(),
+                    ]
+                );
+                // if($firebaseuser->uid){
+                $user->firebase_uid = $firebaseuser->uid;
+                // }
+                $user_permission = UserPermission::updateOrCreate([
+                    'user_id' => $user->id,
+                ]);
+                
+                $user->permission_id = $user_permission->id;
+                $user->save();
+    
+                if (!$user->profile_image) {
+                    $user->profile_image = $payload['picture'];
+                    $user->save();
+                }
             }
+
+            // if ($firebaseUser->uid) {
+                // // User exists, sign them in
+                                // Find or create user
+        
+        // }
+
+
+                    // $firebaseuser = $this->firebaseAuth->signInWithEmail($payload['email']);
+            //     } else {
+            //         // firea$firebaseuser does not exist, create a new firea$firebaseuser
+            //         $firebaseuser = $this->firebaseAuth->createUser([
+            //             'email' => $payload['email'],
+            //             'emailVerified' => true,  // User can't log in until email is verified
+            //         ]);
+            //                     // Find or create user
+            // $user = User::updateOrCreate(
+            //     ['email' => $payload['email']],
+            //     [
+            //         'name' => $payload['name'],
+            //         'google_id' => $payload['sub'],
+
+            //         'email_verified_at' => now(),
+            //     ]
+            // );
+            // if($firebaseuser->uid){
+            // $user->firebase_uid = $firebaseuser->uid;
+            // }
+            // $user_permission = UserPermission::updateOrCreate([
+            //     'user_id' => $user->id,
+            // ]);
+            
+            // $user->permission_id = $user_permission->id;
+            // $user->save();
+
+            // if (!$user->profile_image) {
+            //     $user->profile_image = $payload['picture'];
+            //     $user->save();
+            // }
+
+
+            //     }
+            // } catch (\Exception $e) {
+            //     // return response()->json(['error' => $e->getMessage()], 500);
+            // }
 
 
 
