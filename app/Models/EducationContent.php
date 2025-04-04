@@ -13,6 +13,8 @@ class EducationContent extends Model
     protected $fillable = [
         'user_id',
         'title',
+        'category_id',
+        'media',
         'image_path',
         'short_description',
         'description',

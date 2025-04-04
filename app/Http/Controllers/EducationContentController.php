@@ -12,9 +12,19 @@ use Illuminate\Support\Facades\DB;
 
 class EducationContentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return EducationContent::with('user:id,name')->latest()->get();
+        $request->validate([
+            'category_id' => 'nullable',
+        ]);
+
+        $query = EducationContent::with('user:id,name');
+
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        return $query->latest()->get();
     }
 
     public function show($id)
@@ -70,6 +80,8 @@ class EducationContentController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'category_id' => 'required',
+            'media.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,txt|max:2048', // Accepts multiple files
             'short_description' => 'required|string',
             'description' => 'required|string',
             'video_url' => 'required|url'
@@ -77,6 +89,7 @@ class EducationContentController extends Controller
         if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = time() . '_' . $image->getClientOriginalName();
@@ -84,9 +97,23 @@ class EducationContentController extends Controller
             // Move the file to the public/data/images/education directory
             $image->move(public_path('data/images/education'), $imageName);
 
+            $mediaFiles = [];
+            if ($request->hasFile('media')) {
+                foreach ($request->file('media') as $file) {
+                    $fileName = time() . '_' . $file->getClientOriginalName();
+                    $file->move(public_path('data/files/education'), $fileName);
+                    $mediaFiles[] = [
+                        'name' => $fileName,
+                        'type' => $file->getClientOriginalExtension(),
+                    ];
+                }
+            }
+
             $educationContent = EducationContent::create([
                 'user_id' => Auth::id(),
                 'title' => $request->title,
+                'category_id' => $request->category_id,
+                'media' => json_encode($mediaFiles),
                 'image_path' => $imageName,
                 'short_description' => $request->short_description,
                 'description' => $request->description,
@@ -113,12 +140,14 @@ class EducationContentController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'media.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,txt|max:2048', // Accepts multiple files
+            'category_id' => 'required',
             'short_description' => 'required|string',
             'description' => 'required|string',
             'video_url' => 'nullable|url'
         ]);
 
-        $data = $request->except('image');
+        $data = $request->except('image', 'media');
 
         if ($request->hasFile('image')) {
             // Delete old image
@@ -134,6 +163,19 @@ class EducationContentController extends Controller
             $imageName = time() . '_' . $image->getClientOriginalName();
             $image->move(public_path('data/images/education'), $imageName);
             $data['image_path'] = $imageName;
+        }
+
+        if ($request->hasFile('media')) {
+            $mediaFiles = [];
+            foreach ($request->file('media') as $file) {
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('data/files/education'), $fileName);
+                $mediaFiles[] = [
+                    'name' => $fileName,
+                    'type' => $file->getClientOriginalExtension()
+                ];
+            }
+            $data['media'] = json_encode($mediaFiles);
         }
 
         $educationContent->update($data);
@@ -153,6 +195,16 @@ class EducationContentController extends Controller
             $imagePath = public_path('data/images/education/' . $educationContent->image_path);
             if (file_exists($imagePath)) {
                 unlink($imagePath);
+            }
+        }
+
+        if($educationContent->media) {
+            $mediaFiles = json_decode($educationContent->media, true);
+            foreach ($mediaFiles as $file) {
+                $filePath = public_path('data/files/education/' . $file['name']);
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
             }
         }
 
