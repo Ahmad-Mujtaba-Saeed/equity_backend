@@ -51,7 +51,6 @@ Route::post('auth/google/callback/app', [AuthController::class, 'handleGoogleCal
 
 
 Route::post('/auth/google-login', [AuthController::class, 'handleGoogleLoginRequestApp']);
-Route::post('/save-token', [AuthController::class, 'saveToken']);
 
 
 // Public post routes
@@ -81,11 +80,12 @@ Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser
 
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
-Route::get('/user', function (Request $request) {
-    return $request->user()->load('permissions');
-});
+    Route::post('/save-token', [AuthController::class, 'saveToken']);
+    Route::get('/user', function (Request $request) {
+        return $request->user()->load('permissions');
+    });
     Route::get('/get-admins', [UserController::class, 'getAdmins']);
-
+    
     
     Route::get('/users', [UserController::class, 'getUsers']);
     Route::get('/users/is_admin', [UserController::class, 'IsAdmin']);

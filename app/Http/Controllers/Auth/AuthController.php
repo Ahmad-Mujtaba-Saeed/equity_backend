@@ -187,16 +187,12 @@ class AuthController extends Controller
     public function saveToken(Request $request)
     {
         $request->validate([
-            'firebase_uid' => 'required',
             'fcm_token' => 'required',
         ]);
 
         // Find user by Firebase UID
-        $user = User::where('firebase_uid', $request->firebase_uid)->first();
-
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
+        $user = auth()->user();
+        // dd($user);
 
         // Store FCM token
         $user->fcm_token = $request->fcm_token;
