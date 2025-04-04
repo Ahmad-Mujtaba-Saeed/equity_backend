@@ -13,12 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        //
         Schema::table('posts', function (Blueprint $table) {
             $table->string('title')->nullable()->change();
         });
     }
-    
+
     /**
      * Reverse the migrations.
      *
@@ -27,8 +26,5 @@ return new class extends Migration
     public function down()
     {
         //
-        Schema::table('posts', function (Blueprint $table) {
-            $table->string('title')->nullable(false)->change();
-        });
     }
 };
