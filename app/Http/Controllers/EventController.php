@@ -37,6 +37,7 @@ class EventController extends Controller
             'title' => 'required|string|max:255',
             'organizer_id' => 'nullable|integer',
             'description' => 'nullable|string',
+            'media.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,txt|max:2048', // Accepts multiple files
             'subtitle' => 'nullable|string|max:255',
             'event_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
@@ -52,6 +53,19 @@ class EventController extends Controller
         if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_events') !== 1) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        $mediaFiles = [];
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('data/images'), $fileName);
+                $mediaFiles[] = [
+                    'name' => $fileName,
+                    'type' => $file->getClientOriginalExtension(),
+                ];
+            }
+        }
+        
         
         $eventData = $validator->validated();
         // Handle the main image upload

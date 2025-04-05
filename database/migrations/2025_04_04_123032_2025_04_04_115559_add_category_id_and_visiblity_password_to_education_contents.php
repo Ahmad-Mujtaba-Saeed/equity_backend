@@ -13,8 +13,9 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('posts', function (Blueprint $table) {
-            $table->string('title')->nullable()->change();
+        Schema::table('education_contents', function (Blueprint $table) {
+            $table->string('visibility')->nullable()->after('media');
+            $table->string('password')->nullable()->after('visibility');
         });
     }
 
@@ -25,6 +26,8 @@ return new class extends Migration
      */
     public function down()
     {
-        //
+        Schema::table('education_contents', function (Blueprint $table) {
+            //
+        });
     }
 };

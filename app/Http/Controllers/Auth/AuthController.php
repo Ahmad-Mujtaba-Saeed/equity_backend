@@ -37,7 +37,7 @@ class AuthController extends Controller
     {
         // Validate the incoming request for email and password
         $credentials = $request->validate([
-            'firebase_uid' => 'nullable',
+            // 'firebase_uid' => 'nullable',
             'email' => 'required|email',
             'password' => 'required'
         ]);
@@ -61,7 +61,6 @@ class AuthController extends Controller
         // Validate the incoming request
         try {
             $validatedData = $request->validate([
-                'firebase_uid' => 'nullable',
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
                 'password' => 'required|string|min:8|confirmed',

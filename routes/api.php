@@ -117,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
     // Category routes
     Route::post('/award-video-points', [EducationContentController::class, 'videoPoints']);
+    Route::post('/unlock-content', [EducationContentController::class, 'unlock_content']);
     
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::post('/categories', [CategoryController::class, 'store']);

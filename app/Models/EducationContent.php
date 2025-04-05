@@ -15,6 +15,8 @@ class EducationContent extends Model
         'title',
         'category_id',
         'media',
+        'visibility',
+        'password',
         'image_path',
         'short_description',
         'description',

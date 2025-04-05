@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class EducationContentController extends Controller
 {
@@ -24,7 +25,43 @@ class EducationContentController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        return $query->latest()->get();
+        $educationContents = $query->latest()->get();
+
+        // Process each education content to hide sensitive fields for password-protected content
+        $educationContents = $educationContents->map(function ($content) {
+            if ($content->visibility === 'password_protected') {
+                return $content->makeHidden([
+                    'password',
+                    'short_description',
+                    'description',
+                    'video_url',
+                    'image_path',
+                    'media'
+                ]);
+            }
+            return $content;
+        });
+    
+        return $educationContents;
+    }
+
+    public function unlock_content(Request $request)
+    {
+        $request->validate([
+            'content_id' => 'required',
+            'password' => 'required'
+        ]);
+
+        $content = EducationContent::with('user:id,name')->findOrFail($request->content_id);
+
+        if ($content->visibility === 'password_protected' && Hash::check($request->password, $content->password)) {
+            return response()->json([
+                'message' => 'Content unlocked successfully',
+                'content' => $content
+            ], 200);
+        }
+
+        return response()->json(['message' => 'Invalid password'], 401);
     }
 
     public function show($id)
@@ -78,13 +115,15 @@ class EducationContentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'visibility' => 'required',
             'title' => 'required|string|max:255',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             'category_id' => 'required',
             'media.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,txt|max:2048', // Accepts multiple files
             'short_description' => 'required|string',
             'description' => 'required|string',
-            'video_url' => 'required|url'
+            'video_url' => 'required|url',
+            'password' => 'nullable|string'
         ]);
         if (Auth::user()->permissions()->where('user_id', Auth::id())->value('can_create_education') !== 1) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -115,11 +154,22 @@ class EducationContentController extends Controller
                 'category_id' => $request->category_id,
                 'media' => json_encode($mediaFiles),
                 'image_path' => $imageName,
+                'visibility' => $request->visibility,
                 'short_description' => $request->short_description,
                 'description' => $request->description,
                 'video_url' => $request->video_url
             ]);
-
+            if($request->visibility == 'password_protected'){
+                $educationContent->password = Hash::make($request->password);
+                $educationContent->save();
+                $educationContent = $educationContent->makeHidden([
+                    'short_description',
+                    'description',
+                    'video_url',
+                    'image_path',
+                    'media'
+                ]);
+            }
             return response()->json($educationContent, 201);
         }
 
