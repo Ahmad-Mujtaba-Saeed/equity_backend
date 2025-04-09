@@ -42,7 +42,7 @@ class EventController extends Controller
             'event_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i|after:start_time',
-            'type' => 'required|string|max:255',
+            // 'type' => 'required|string|max:255',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -68,6 +68,7 @@ class EventController extends Controller
         
         
         $eventData = $validator->validated();
+        unset($eventData['media']); // Remove media from validated data since we'll handle it separately
         // Handle the main image upload
         if (isset($request->main_image)) {
             $imageData = $request->main_image;
@@ -100,6 +101,10 @@ class EventController extends Controller
         $eventData['created_by'] = Auth::id();
 
         $event = Event::create($eventData);
+        if (!empty($mediaFiles)) {
+            $event->media = json_encode($mediaFiles);
+            $event->save();
+        }
         return response()->json($event, 201);
     }
 

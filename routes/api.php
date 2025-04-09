@@ -54,7 +54,6 @@ Route::post('/auth/google-login', [AuthController::class, 'handleGoogleLoginRequ
 
 
 // Public post routes
-Route::get('/posts', [PostController::class, 'index']);
 Route::get('/user_posts', [PostController::class, 'UserPosts']);
 Route::get('/user_posts/{id}', [PostController::class, 'UserPostsforotherusers']);
 Route::get('/posts/{post}', [PostController::class, 'show']);
@@ -80,11 +79,13 @@ Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser
 
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
+    Route::get('/posts', [PostController::class, 'index']);
     Route::post('/save-token', [AuthController::class, 'saveToken']);
     Route::get('/user', function (Request $request) {
         return $request->user()->load('permissions');
     });
     Route::get('/get-admins', [UserController::class, 'getAdmins']);
+    Route::post('/like-comment', [PostController::class, 'like_comment']);
     
     
     Route::get('/users', [UserController::class, 'getUsers']);

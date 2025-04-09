@@ -229,7 +229,14 @@ class PostController extends Controller
             }
     
             // Fetch posts only from followed users
-            $query = Post::with(['user', 'likes', 'comments.user'])
+            $query = Post::with([
+                'user', 
+                'likes', 
+                'comments' => function($query) {
+                    $query->with(['user', 'likes', 'replies', 'replies.likes','replies.user'])
+                        ->withCount(['likes', 'replies']);
+                }
+            ])
                 ->withCount(['likes', 'comments'])
                 ->where(function ($q) use ($userId, $followedUsers) {
                     $q->whereIn('user_id', $followedUsers)
@@ -295,6 +302,10 @@ class PostController extends Controller
                 }
     
                 $post->media = $formattedMedia;
+
+                // foreach($post->comments as $comment) {
+                //     $comment->is_liked = $comment->isLikedByCurrentUser();
+                // }
     
                 return $post;
             });
@@ -320,7 +331,46 @@ class PostController extends Controller
     }
     
     
-    
+    public function like_comment(Request $request)
+    {
+        $request->validate([
+            'comment_id' => 'nullable|exists:comments,id',
+        ]);
+
+        try {
+            $existingLike = Like::where('user_id', Auth::id())
+                ->where('post_id', $request->comment_id)
+                ->where('type', "comment")
+                ->first();
+
+            if ($existingLike) {
+                $existingLike->delete();
+                return response()->json([
+                    'success' => true,
+                    'like_id' => $existingLike->id,
+                    'message' => 'Comment unliked successfully'
+                ], 200);
+            } else {
+                $like = Like::create([
+                    'user_id' => Auth::id(),
+                    'post_id' => $request->comment_id,
+                    'type' => "comment"
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to like comment',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'like' => $like,
+            'message' => 'Comment liked successfully'
+        ], 200);
+    }
 
     public function store(Request $request)
     {
@@ -907,7 +957,8 @@ class PostController extends Controller
     {
         $request->validate([
             'content' => 'required|string',
-            'parent_id' => 'nullable|exists:comments,id'
+            'parent_id' => 'nullable|exists:comments,id',
+            'reply_to' => 'nullable|exists:users,id'
         ]);
         $mediaPaths = [];
         if ($request->hasFile('media')) {
@@ -922,7 +973,8 @@ class PostController extends Controller
             'user_id' => Auth::id(),
             'content' => $request->content,
             'media' => json_encode($mediaPaths), // Store paths as JSON
-            'parent_id' => $request->parent_id
+            'parent_id' => $request->parent_id,
+            'reply_to' => $request->reply_to
         ]);
 
         // Load the post content
