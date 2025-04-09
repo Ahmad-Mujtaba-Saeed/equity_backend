@@ -190,29 +190,29 @@ class PostController extends Controller
         $perPage = 6; // Set posts per page to 6
     
         // Get bearer token from request header
-        $token = $request->bearerToken();
+        // $token = $request->bearerToken();
     
-        if (!$token) {
-            return response()->json([
-                'data' => [],
-                'current_page' => 0,
-                'last_page' => 0,
-                'has_more' => false
-            ]);
-        }
+        // if (!$token) {
+        //     return response()->json([
+        //         'data' => [],
+        //         'current_page' => 0,
+        //         'last_page' => 0,
+        //         'has_more' => false
+        //     ]);
+        // }
     
         try {
-            $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
-            if (!$user || !$user->tokenable) {
-                return response()->json([
-                    'data' => [],
-                    'current_page' => 0,
-                    'last_page' => 0,
-                    'has_more' => false
-                ]);
-            }
+            // $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            // if (!$user || !$user->tokenable) {
+            //     return response()->json([
+            //         'data' => [],
+            //         'current_page' => 0,
+            //         'last_page' => 0,
+            //         'has_more' => false
+            //     ]);
+            // }
     
-            $userId = $user->tokenable->id;
+            $userId = $request->user()->id;
     
             // Get list of followed users
             $followedUsers = FollowsHandler::where('follower_id', $userId)
