@@ -13,6 +13,7 @@ class Event extends Model
         'main_image',
         'banner_image',
         'title',
+        'media',
         'description',
         'subtitle',
         'organizer_id',

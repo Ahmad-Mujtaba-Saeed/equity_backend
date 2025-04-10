@@ -54,7 +54,6 @@ Route::post('/auth/google-login', [AuthController::class, 'handleGoogleLoginRequ
 
 
 // Public post routes
-Route::get('/posts', [PostController::class, 'index']);
 Route::get('/user_posts', [PostController::class, 'UserPosts']);
 Route::get('/user_posts/{id}', [PostController::class, 'UserPostsforotherusers']);
 Route::get('/posts/{post}', [PostController::class, 'show']);
@@ -113,11 +112,13 @@ Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser
 
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
+    Route::get('/posts', [PostController::class, 'index']);
 
     Route::get('/user', function (Request $request) {
         return $request->user()->load('permissions');
     });
     Route::get('/get-admins', [UserController::class, 'getAdmins']);
+    Route::post('/like-comment', [PostController::class, 'like_comment']);
     
     
     Route::get('/users', [UserController::class, 'getUsers']);
@@ -150,6 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/education-contents/{id}', [EducationContentController::class, 'destroy']);
     // Category routes
     Route::post('/award-video-points', [EducationContentController::class, 'videoPoints']);
+    Route::post('/unlock-content', [EducationContentController::class, 'unlock_content']);
     
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::post('/categories', [CategoryController::class, 'store']);
