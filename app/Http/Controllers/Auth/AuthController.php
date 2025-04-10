@@ -61,7 +61,7 @@ class AuthController extends Controller
         // Validate the incoming request
         try {
             $validatedData = $request->validate([
-                'firebase_uid' => 'nullable',
+                // 'firebase_uid' => 'nullable',
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
                 'password' => 'required|string|min:8|confirmed',
@@ -71,10 +71,10 @@ class AuthController extends Controller
         }
 
         try {
-            $firebaseuser = $this->firebaseAuth->createUser([
-                'email' => $request->email,
-                'password' => $request->password,
-            ]);
+            // $firebaseuser = $this->firebaseAuth->createUser([
+            //     'email' => $request->email,
+            //     'password' => $request->password,
+            // ]);
 
             // return response()->json([
             //     'message' => 'User created successfully',
@@ -89,7 +89,7 @@ class AuthController extends Controller
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => bcrypt($validatedData['password']),
-            'firebase_uid' => $firebaseuser->uid ?? null,
+            // 'firebase_uid' => $firebaseuser->uid ?? null,
         ]);
 
         $user_permission = UserPermission::updateOrCreate([
@@ -187,18 +187,36 @@ class AuthController extends Controller
     public function saveToken(Request $request)
     {
         $request->validate([
-            'fcm_token' => 'required',
+            'fcm_token' => 'required|string|max:255',
         ]);
-
-        // Find user by Firebase UID
-        $user = auth()->user();
-        // dd($user);
-
-        // Store FCM token
-        $user->fcm_token = $request->fcm_token;
-        $user->save();
-
-        return response()->json(['success' => true, 'message' => 'Token saved']);
+    
+        try {
+            // Get authenticated user
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+    
+            // Store FCM token
+            $user->fcm_token = $request->fcm_token;
+            $user->save();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Token saved successfully'
+            ]);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function handleGoogleLoginRequestApp(Request $request) {
@@ -216,32 +234,32 @@ class AuthController extends Controller
         }
     
         $payload = $response->json();
+        $user = User::updateOrCreate(
+               ['email' => $payload['email']],
+               [
+                   'name' => $payload['name'],
+                   'email' => $payload['email'],
+                   'google_id' => $payload['sub'], // Google Unique ID
+                   'profile_image' => $payload['picture'],
+               ]
+           );
         try {
             $firebaseUser = $this->firebaseAuth->getUserByEmail($payload['email']);
-             $user = User::updateOrCreate(
-                    ['email' => $payload['email']],
-                    [
-                        'name' => $payload['name'],
-                        'email' => $payload['email'],
-                        'google_id' => $payload['sub'], // Google Unique ID
-                        'profile_image' => $payload['picture'],
-                    ]
-                );
         } catch (\Kreait\Firebase\Exception\Auth\UserNotFound $e) {
             // User does not exist in Firebase
             $firebaseuser = $this->firebaseAuth->createUser([
                 'email' => $payload['email'],
                 'emailVerified' => true,
             ]);
-            $user = User::updateOrCreate(
-                ['email' => $payload['email']],
-                [
-                    'name' => $payload['name'],
-                    'email' => $payload['email'],
-                    'google_id' => $payload['sub'], // Google Unique ID
-                    'profile_image' => $payload['picture'],
-                ]
-            );
+            // $user = User::updateOrCreate(
+            //     ['email' => $payload['email']],
+            //     [
+            //         'name' => $payload['name'],
+            //         'email' => $payload['email'],
+            //         'google_id' => $payload['sub'], // Google Unique ID
+            //         'profile_image' => $payload['picture'],
+            //     ]
+            // );
             if($firebaseuser->uid){
                 $user->firebase_uid = $firebaseuser->uid;
                 $user->save();
@@ -289,60 +307,60 @@ class AuthController extends Controller
             }
             // try {
 
+            $user = User::updateOrCreate(
+                ['email' => $payload['email']],
+                [
+                    'name' => $payload['name'],
+                    'google_id' => $payload['sub'],
+
+                    'email_verified_at' => now(),
+                ]
+            );
+            $user_permission = UserPermission::updateOrCreate([
+                'user_id' => $user->id,
+            ]);
+            
+            $user->permission_id = $user_permission->id;
+            $user->save();
+
+            if (!$user->profile_image) {
+                $user->profile_image = $payload['picture'];
+                $user->save();
+            }
             try {
                 $firebaseUser = $this->firebaseAuth->getUserByEmail($payload['email']);
-                $user = User::updateOrCreate(
-                    ['email' => $payload['email']],
-                    [
-                        'name' => $payload['name'],
-                        'google_id' => $payload['sub'],
-    
-                        'email_verified_at' => now(),
-                    ]
-                );
                 // if($firebaseuser->uid){
                 // $user->firebase_uid = $firebaseuser->uid;
                 // }
-                $user_permission = UserPermission::updateOrCreate([
-                    'user_id' => $user->id,
-                ]);
-                
-                $user->permission_id = $user_permission->id;
-                $user->save();
-    
-                if (!$user->profile_image) {
-                    $user->profile_image = $payload['picture'];
-                    $user->save();
-                }
             } catch (\Kreait\Firebase\Exception\Auth\UserNotFound $e) {
                 // User does not exist, create them in Firebase
                 $firebaseUser = $this->firebaseAuth->createUser([
                     'email' => $payload['email'],
                     'emailVerified' => true,
                 ]);
-                $user = User::updateOrCreate(
-                    ['email' => $payload['email']],
-                    [
-                        'name' => $payload['name'],
-                        'google_id' => $payload['sub'],
+                // $user = User::updateOrCreate(
+                //     ['email' => $payload['email']],
+                //     [
+                //         'name' => $payload['name'],
+                //         'google_id' => $payload['sub'],
     
-                        'email_verified_at' => now(),
-                    ]
-                );
+                //         'email_verified_at' => now(),
+                //     ]
+                // );
                 // if($firebaseuser->uid){
                 $user->firebase_uid = $firebaseuser->uid;
                 // }
-                $user_permission = UserPermission::updateOrCreate([
-                    'user_id' => $user->id,
-                ]);
+                // $user_permission = UserPermission::updateOrCreate([
+                //     'user_id' => $user->id,
+                // ]);
                 
-                $user->permission_id = $user_permission->id;
-                $user->save();
+                // $user->permission_id = $user_permission->id;
+                // $user->save();
     
-                if (!$user->profile_image) {
-                    $user->profile_image = $payload['picture'];
-                    $user->save();
-                }
+                // if (!$user->profile_image) {
+                //     $user->profile_image = $payload['picture'];
+                //     $user->save();
+                // }
             }
 
             // if ($firebaseUser->uid) {

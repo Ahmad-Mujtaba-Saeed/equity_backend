@@ -64,6 +64,39 @@ Route::get('/users/list', [UserController::class, 'getUsers']);
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/save-token-new', function (Request $request) {
+        $request->validate([
+            'fcm_token' => 'required|string|max:255',
+        ]);
+
+        try {
+            // Get authenticated user
+            $user = auth()->guard('sanctum')->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            // Store FCM token
+            $user->fcm_token = $request->fcm_token;
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token saved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
     Route::post('/jobs', [JobController::class, 'store']);
     Route::put('/jobs/{id}', [JobController::class, 'update']);
     Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
@@ -80,7 +113,7 @@ Route::get('/user-stats/{id}', [UserController::class, 'getUserStatsforotheruser
 
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile
-    Route::post('/save-token', [AuthController::class, 'saveToken']);
+
     Route::get('/user', function (Request $request) {
         return $request->user()->load('permissions');
     });
@@ -126,6 +159,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notification routes
     Route::middleware('auth:sanctum')->group(function () {
+       
         Route::get('/get-notifications', [EqNotificationController::class, 'index']);
         Route::post('/notifications', [EqNotificationController::class, 'store']);
         Route::patch('/notifications/{id}/read', [EqNotificationController::class, 'markAsRead']);
