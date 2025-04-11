@@ -219,14 +219,14 @@ class PostController extends Controller
                 ->pluck('following_id')
                 ->toArray();
     
-            if (empty($followedUsers)) {
-                return response()->json([
-                    'data' => [],
-                    'current_page' => 0,
-                    'last_page' => 0,
-                    'has_more' => false
-                ]);
-            }
+            // if (empty($followedUsers)) {
+            //     return response()->json([
+            //         'data' => [],
+            //         'current_page' => 0,
+            //         'last_page' => 0,
+            //         'has_more' => false
+            //     ]);
+            // }
     
             // Fetch posts only from followed users
             $query = Post::with([
@@ -338,8 +338,11 @@ class PostController extends Controller
         ]);
 
         try {
+            $comment = Comment::findOrFail($request->comment_id);
+            
             $existingLike = Like::where('user_id', Auth::id())
-                ->where('post_id', $request->comment_id)
+                ->where('post_id', $comment->post_id)
+                ->where('comment_id', $request->comment_id)
                 ->where('type', "comment")
                 ->first();
 
@@ -353,7 +356,8 @@ class PostController extends Controller
             } else {
                 $like = Like::create([
                     'user_id' => Auth::id(),
-                    'post_id' => $request->comment_id,
+                    'post_id' => $comment->post_id,
+                    'comment_id' => $request->comment_id,
                     'type' => "comment"
                 ]);
             }

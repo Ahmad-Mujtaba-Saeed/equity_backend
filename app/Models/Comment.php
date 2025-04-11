@@ -29,13 +29,13 @@ class Comment extends Model
 
     public function likes()
     {
-        return $this->hasMany(Like::class, 'post_id', 'id')
+        return $this->hasMany(Like::class, 'comment_id', 'id')
             ->where('type', 'comment');
     }
 
     public function replies()
     {
-        return $this->hasMany(Comment::class, 'parent_id');
+        return $this->hasMany(Comment::class, 'parent_id', 'id');
     }
 
     /**
